@@ -5,6 +5,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from taocli.sdk.admin import Admin
+from taocli.sdk.audit import Audit
 from taocli.sdk.batch import Batch
 from taocli.sdk.block import Block
 from taocli.sdk.client import Client
@@ -16,6 +17,7 @@ from taocli.sdk.delegate import Delegate
 from taocli.sdk.diff import Diff
 from taocli.sdk.drand import Drand
 from taocli.sdk.evm import Evm
+from taocli.sdk.explain import Explain
 from taocli.sdk.identity import Identity
 from taocli.sdk.liquidity import Liquidity
 from taocli.sdk.localnet import Localnet
@@ -59,6 +61,7 @@ class TestClientInit:
         assert isinstance(c.config, Config)
         assert isinstance(c.swap, Swap)
         assert isinstance(c.admin, Admin)
+        assert isinstance(c.audit, Audit)
         assert isinstance(c.batch, Batch)
         assert isinstance(c.block, Block)
         assert isinstance(c.contracts, Contracts)
@@ -66,6 +69,7 @@ class TestClientInit:
         assert isinstance(c.diff, Diff)
         assert isinstance(c.drand, Drand)
         assert isinstance(c.evm, Evm)
+        assert isinstance(c.explain, Explain)
         assert isinstance(c.liquidity, Liquidity)
         assert isinstance(c.localnet, Localnet)
         assert isinstance(c.multisig, Multisig)

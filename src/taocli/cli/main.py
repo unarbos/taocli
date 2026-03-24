@@ -65,7 +65,25 @@ COMMAND_GROUPS = [
 def main(ctx: click.Context, agcli_binary: str | None, version: bool, args: tuple[str, ...]) -> None:
     """taocli — Python wrapper for agcli (Bittensor CLI).
 
-    All commands are passed through to agcli. Use taocli exactly as you would use agcli.
+    \b
+    All commands are passed through to agcli. Use taocli exactly as
+    you would use agcli.
+
+    \b
+    Examples:
+      taocli balance --address 5G...
+      taocli wallet list
+      taocli view network
+      taocli explain --topic weights
+
+    \b
+    SDK usage (Python):
+      from taocli import Client
+      c = Client(network="finney")
+      c.balance("5G...")
+
+    \b
+    Requires agcli: https://github.com/unarbos/agcli/releases
     """
     if version:
         from taocli import __version__

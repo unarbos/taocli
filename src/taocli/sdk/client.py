@@ -6,6 +6,7 @@ from typing import Any
 
 from taocli.runner import AgcliRunner
 from taocli.sdk.admin import Admin
+from taocli.sdk.audit import Audit
 from taocli.sdk.batch import Batch
 from taocli.sdk.block import Block
 from taocli.sdk.commitment import Commitment
@@ -16,6 +17,7 @@ from taocli.sdk.delegate import Delegate
 from taocli.sdk.diff import Diff
 from taocli.sdk.drand import Drand
 from taocli.sdk.evm import Evm
+from taocli.sdk.explain import Explain
 from taocli.sdk.identity import Identity
 from taocli.sdk.liquidity import Liquidity
 from taocli.sdk.localnet import Localnet
@@ -38,7 +40,30 @@ from taocli.sdk.weights import Weights
 
 
 class Client:
-    """Main taocli client — provides access to all SDK modules."""
+    """Main taocli client — provides access to all SDK modules.
+
+    Args:
+        binary: Path to agcli binary (default: 'agcli' found on PATH).
+        network: Network name — 'finney' (mainnet), 'test' (testnet), 'local'.
+        endpoint: WebSocket chain endpoint (e.g. 'ws://127.0.0.1:9944').
+            Overrides ``network`` when set.
+        wallet_dir: Directory containing wallet keys (default: ~/.bittensor/wallets).
+        wallet: Coldkey wallet name (default: 'default').
+        hotkey_name: Hotkey name within the wallet (default: 'default').
+        password: Wallet decryption password. If omitted and required, agcli
+            will prompt (only works when not in batch mode).
+        proxy: SS58 address of a proxy account — all extrinsics will be
+            wrapped via ``Proxy.proxy``.
+        timeout: Global subprocess timeout in seconds for every agcli call.
+
+    Example::
+
+        from taocli import Client
+
+        c = Client(network="finney")
+        print(c.balance("5C4hrfjw9DjXZTzV3MwzrrAr9P1MJhSrvWGWqi1eSuyUpnhM"))
+        print(c.view.network())
+    """
 
     def __init__(
         self,
@@ -82,6 +107,7 @@ class Client:
         self.config = Config(self._runner)
         self.swap = Swap(self._runner)
         self.admin = Admin(self._runner)
+        self.audit = Audit(self._runner)
         self.batch = Batch(self._runner)
         self.block = Block(self._runner)
         self.contracts = Contracts(self._runner)
@@ -89,6 +115,7 @@ class Client:
         self.diff = Diff(self._runner)
         self.drand = Drand(self._runner)
         self.evm = Evm(self._runner)
+        self.explain = Explain(self._runner)
         self.liquidity = Liquidity(self._runner)
         self.localnet = Localnet(self._runner)
         self.multisig = Multisig(self._runner)

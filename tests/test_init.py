@@ -8,6 +8,7 @@ def test_imports():
         Admin,
         AgcliError,
         AgcliRunner,
+        Audit,
         Batch,
         Block,
         Client,
@@ -19,6 +20,7 @@ def test_imports():
         Diff,
         Drand,
         Evm,
+        Explain,
         Identity,
         Liquidity,
         Localnet,
@@ -41,7 +43,7 @@ def test_imports():
         __version__,
     )
 
-    assert __version__ == "0.5.0"
+    assert __version__ == "0.6.0"
     assert Client is not None
     assert Wallet is not None
     assert Stake is not None
@@ -59,6 +61,7 @@ def test_imports():
     assert Config is not None
     assert Swap is not None
     assert Admin is not None
+    assert Audit is not None
     assert Batch is not None
     assert Block is not None
     assert Contracts is not None
@@ -66,6 +69,7 @@ def test_imports():
     assert Diff is not None
     assert Drand is not None
     assert Evm is not None
+    assert Explain is not None
     assert Liquidity is not None
     assert Localnet is not None
     assert Multisig is not None

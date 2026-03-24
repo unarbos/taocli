@@ -1,6 +1,7 @@
 """taocli SDK — Pythonic API wrapping agcli commands."""
 
 from taocli.sdk.admin import Admin
+from taocli.sdk.audit import Audit
 from taocli.sdk.batch import Batch
 from taocli.sdk.block import Block
 from taocli.sdk.client import Client
@@ -12,6 +13,7 @@ from taocli.sdk.delegate import Delegate
 from taocli.sdk.diff import Diff
 from taocli.sdk.drand import Drand
 from taocli.sdk.evm import Evm
+from taocli.sdk.explain import Explain
 from taocli.sdk.identity import Identity
 from taocli.sdk.liquidity import Liquidity
 from taocli.sdk.localnet import Localnet
@@ -35,6 +37,7 @@ from taocli.sdk.weights import Weights
 __all__ = [
     "Client",
     "Admin",
+    "Audit",
     "Batch",
     "Block",
     "Commitment",
@@ -45,6 +48,7 @@ __all__ = [
     "Diff",
     "Drand",
     "Evm",
+    "Explain",
     "Identity",
     "Liquidity",
     "Localnet",

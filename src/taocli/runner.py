@@ -93,12 +93,15 @@ class AgcliRunner:
             )
         except FileNotFoundError as exc:
             raise AgcliError(
-                f"agcli binary not found at '{self.binary}'. Install agcli or set the binary path.",
+                f"agcli binary not found at '{self.binary}'.\n"
+                f"Install from: https://github.com/unarbos/agcli/releases\n"
+                f"Or set the path: Client(binary='/path/to/agcli')",
                 returncode=-1,
             ) from exc
         except subprocess.TimeoutExpired as exc:
             raise AgcliError(
-                f"agcli timed out after {timeout_secs}s",
+                f"agcli timed out after {timeout_secs}s. "
+                f"Try increasing timeout: Client(timeout={timeout_secs * 2 if timeout_secs else 60})",
                 returncode=-1,
                 stderr=str(exc),
             ) from exc
