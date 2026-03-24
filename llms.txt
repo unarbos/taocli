@@ -1,0 +1,68 @@
+# taocli
+
+taocli is a Python CLI + SDK wrapper for agcli for Bittensor operations.
+
+## Install
+- `uv pip install taocli`
+- On supported Linux and macOS wheels, taocli bundles the `agcli` binary.
+- Override the binary with `--agcli-binary /path/to/agcli` or `TAOCLI_AGCLI_BINARY=/path/to/agcli`.
+
+## CLI usage
+- `taocli balance --address <ss58>`
+- `taocli wallet list`
+- `taocli stake add --amount 10 --netuid 1`
+- `taocli weights set --netuid 1 --uids 0,1 --weights 50000,15535`
+- `taocli view network`
+- `taocli explain --topic weights`
+
+taocli mirrors agcli command names and flags.
+
+## Python SDK usage
+```python
+from taocli import Client
+
+client = Client(network="finney")
+client.balance("5G...")
+client.wallet.list()
+client.stake.add(10.0, netuid=1)
+client.weights.set(netuid=1, uids=[0, 1], weights=[50000, 15535])
+client.view.network()
+```
+
+## Important modules
+- `Client().wallet`
+- `Client().stake`
+- `Client().transfer`
+- `Client().subnet`
+- `Client().weights`
+- `Client().view`
+- `Client().delegate`
+- `Client().root`
+- `Client().identity`
+- `Client().proxy`
+- `Client().serve`
+- `Client().commitment`
+- `Client().config`
+- `Client().swap`
+- `Client().admin`
+- `Client().audit`
+- `Client().multisig`
+- `Client().crowdloan`
+- `Client().liquidity`
+- `Client().subscribe`
+- `Client().block`
+- `Client().diff`
+- `Client().scheduler`
+- `Client().preimage`
+- `Client().contracts`
+- `Client().evm`
+- `Client().safe_mode`
+- `Client().drand`
+- `Client().localnet`
+- `Client().batch`
+
+## Notes for agents
+- Prefer the bundled agcli binary when present.
+- If a command fails because agcli is missing, install taocli from a platform wheel or provide `--agcli-binary`.
+- For read operations, prefer JSON-producing SDK methods through `Client`.
+- For weight-setting flows, verify subnet configuration first: validator permit, commit-reveal enabled/disabled, version key, and rate limits.

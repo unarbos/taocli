@@ -103,6 +103,12 @@ class TestCLIPassThrough:
         cli_runner.invoke(main, ["--agcli-binary", "/custom/agcli", "doctor"])
         mock_cls.assert_called_once_with(binary="/custom/agcli")
 
+    def test_help_mentions_bundled_binary(self, cli_runner):
+        result = cli_runner.invoke(main, ["--help"])
+        assert result.exit_code == 0
+        assert "bundled agcli binary" in result.output
+        assert "agcli/releases" in result.output
+
 
 class TestCommandGroups:
     def test_command_groups_not_empty(self):

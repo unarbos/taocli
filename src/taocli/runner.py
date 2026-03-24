@@ -3,9 +3,62 @@
 from __future__ import annotations
 
 import json
+import os
+import platform
 import shutil
+import stat
 import subprocess
+from importlib.abc import Traversable
+from importlib.resources import files
 from typing import Any
+
+
+def _bundled_candidate(system: str, machine: str) -> Traversable:
+    return files("taocli").joinpath("bin").joinpath(system).joinpath(machine).joinpath("agcli")
+
+
+def _normalize_machine(machine: str) -> str | None:
+    normalized = machine.lower()
+    if normalized in {"x86_64", "amd64"}:
+        return "x86_64"
+    if normalized in {"aarch64", "arm64"}:
+        return "aarch64"
+    return None
+
+
+def _ensure_executable(path: str) -> bool:
+    if os.access(path, os.X_OK):
+        return True
+    try:
+        current_mode = os.stat(path).st_mode
+        os.chmod(path, current_mode | stat.S_IXUSR)
+    except OSError:
+        return False
+    return os.access(path, os.X_OK)
+
+
+def find_bundled_agcli_binary() -> str | None:
+    """Return a bundled agcli binary path for the current platform, if present."""
+    system = platform.system().lower()
+    machine = _normalize_machine(platform.machine())
+    if system not in {"linux", "darwin"} or machine is None:
+        return None
+
+    candidate = _bundled_candidate(system, machine)
+    if not candidate.is_file():
+        return None
+
+    candidate_path = str(candidate)
+    if not _ensure_executable(candidate_path):
+        return None
+    return candidate_path
+
+
+def resolve_agcli_binary(binary: str | None) -> str:
+    """Resolve the agcli binary path, preferring bundled binaries when available."""
+    if binary:
+        return binary
+    return find_bundled_agcli_binary() or "agcli"
 
 
 class AgcliError(Exception):
@@ -35,7 +88,7 @@ class AgcliRunner:
         proxy: str | None = None,
         timeout: int | None = None,
     ) -> None:
-        self.binary = binary or "agcli"
+        self.binary = resolve_agcli_binary(binary)
         self.network = network
         self.endpoint = endpoint
         self.wallet_dir = wallet_dir
@@ -94,7 +147,7 @@ class AgcliRunner:
         except FileNotFoundError as exc:
             raise AgcliError(
                 f"agcli binary not found at '{self.binary}'.\n"
-                f"Install from: https://github.com/unarbos/agcli/releases\n"
+                f"Install taocli with bundled binaries for your platform, or download agcli from: https://github.com/unarbos/agcli/releases\n"
                 f"Or set the path: Client(binary='/path/to/agcli')",
                 returncode=-1,
             ) from exc

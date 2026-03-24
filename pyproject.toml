@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tao-cli"
-version = "0.6.4"
+name = "taocli"
+version = "0.6.5"
 description = "Python CLI + SDK wrapper for agcli — Bittensor staking, transfers, wallets, weights, subnets, and more"
 readme = "README.md"
 license = "MIT"
@@ -39,6 +39,28 @@ taocli = "taocli.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/taocli"]
+artifacts = [
+    "src/taocli/bin/**/*.tar.gz",
+    "src/taocli/bin/**/agcli",
+]
+exclude = [
+    "src/taocli/bin/.gitkeep",
+]
+
+[tool.hatch.build.targets.wheel.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/src/taocli",
+    "/tests",
+    "/README.md",
+    "/llms.txt",
+    "/codecov.yml",
+]
+exclude = [
+    "/src/taocli/bin/.gitkeep",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

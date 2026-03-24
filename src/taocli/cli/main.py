@@ -83,7 +83,8 @@ def main(ctx: click.Context, agcli_binary: str | None, version: bool, args: tupl
       c.balance("5G...")
 
     \b
-    Requires agcli: https://github.com/unarbos/agcli/releases
+    Uses a bundled agcli binary when available; otherwise install agcli from:
+    https://github.com/unarbos/agcli/releases
     """
     if version:
         from taocli import __version__

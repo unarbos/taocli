@@ -43,7 +43,7 @@ class Client:
     """Main taocli client — provides access to all SDK modules.
 
     Args:
-        binary: Path to agcli binary (default: 'agcli' found on PATH).
+        binary: Path to agcli binary (default: bundled agcli when available, else 'agcli' on PATH).
         network: Network name — 'finney' (mainnet), 'test' (testnet), 'local'.
         endpoint: WebSocket chain endpoint (e.g. 'ws://127.0.0.1:9944').
             Overrides ``network`` when set.

@@ -1,6 +1,6 @@
 """taocli — Python CLI + SDK wrapper for agcli (Bittensor)."""
 
-from taocli.runner import AgcliError, AgcliRunner
+from taocli.runner import AgcliError, AgcliRunner, find_bundled_agcli_binary, resolve_agcli_binary
 from taocli.sdk.admin import Admin
 from taocli.sdk.audit import Audit
 from taocli.sdk.batch import Batch
@@ -71,6 +71,8 @@ __all__ = [
     "Weights",
     "AgcliRunner",
     "AgcliError",
+    "find_bundled_agcli_binary",
+    "resolve_agcli_binary",
 ]
 
-__version__ = "0.6.4"
+__version__ = "0.6.5"
