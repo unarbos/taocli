@@ -1,4 +1,4 @@
-"""Shared fixtures for pytao tests."""
+"""Shared fixtures for taocli tests."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pytao.runner import AgcliRunner
+from taocli.runner import AgcliRunner
 
 
 def make_completed_process(
@@ -26,7 +26,7 @@ def make_completed_process(
 @pytest.fixture
 def mock_subprocess():
     """Mock subprocess.run to return a configurable CompletedProcess."""
-    with patch("pytao.runner.subprocess.run") as mock_run:
+    with patch("taocli.runner.subprocess.run") as mock_run:
         mock_run.return_value = make_completed_process(stdout='{"ok": true}')
         yield mock_run
 

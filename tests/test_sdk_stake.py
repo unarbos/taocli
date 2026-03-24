@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from pytao.runner import AgcliRunner
-from pytao.sdk.stake import Stake
+from taocli.runner import AgcliRunner
+from taocli.sdk.stake import Stake
 
 
 @pytest.fixture

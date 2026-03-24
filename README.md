@@ -1,36 +1,36 @@
-# pytao
+# tao-cli
 
 Python CLI + SDK wrapper for [agcli](https://github.com/unarbos/agcli) — Bittensor staking, transfers, wallets, weights, subnets, and more.
 
-[![CI](https://github.com/unarbos/pytao/actions/workflows/ci.yml/badge.svg)](https://github.com/unarbos/pytao/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/unarbos/pytao/branch/main/graph/badge.svg)](https://codecov.io/gh/unarbos/pytao)
-[![PyPI](https://img.shields.io/pypi/v/pytao)](https://pypi.org/project/pytao/)
+[![CI](https://github.com/unarbos/tao-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/unarbos/tao-cli/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/unarbos/tao-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/unarbos/tao-cli)
+[![PyPI](https://img.shields.io/pypi/v/tao-cli)](https://pypi.org/project/tao-cli/)
 
 ## Install
 
 ```bash
-uv pip install pytao
+uv pip install tao-cli
 ```
 
 Requires the `agcli` binary on your PATH. See [agcli releases](https://github.com/unarbos/agcli/releases).
 
 ## CLI
 
-pytao mirrors agcli 1:1 — same commands, same flags, same output:
+taocli mirrors agcli 1:1 — same commands, same flags, same output:
 
 ```bash
-pytao wallet list
-pytao balance --address 5G...
-pytao stake add --amount 10 --netuid 1
-pytao subnet list
-pytao view portfolio
-pytao transfer --dest 5G... --amount 1.0
+taocli wallet list
+taocli balance --address 5G...
+taocli stake add --amount 10 --netuid 1
+taocli subnet list
+taocli view portfolio
+taocli transfer --dest 5G... --amount 1.0
 ```
 
 ## SDK
 
 ```python
-from pytao import Client
+from taocli import Client
 
 c = Client(network="finney")
 

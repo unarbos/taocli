@@ -1,10 +1,10 @@
-"""Tests for the pytao package init."""
+"""Tests for the taocli package init."""
 
 from __future__ import annotations
 
 
 def test_imports():
-    from pytao import (
+    from taocli import (
         AgcliError,
         AgcliRunner,
         Client,
@@ -34,12 +34,12 @@ def test_imports():
 
 
 def test_sdk_init_imports():
-    from pytao.sdk import Client
+    from taocli.sdk import Client
 
     assert Client is not None
 
 
 def test_cli_init_imports():
-    from pytao.cli import main
+    from taocli.cli import main
 
     assert main is not None

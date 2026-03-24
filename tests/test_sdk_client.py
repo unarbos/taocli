@@ -4,20 +4,20 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from pytao.sdk.client import Client
-from pytao.sdk.delegate import Delegate
-from pytao.sdk.root import Root
-from pytao.sdk.stake import Stake
-from pytao.sdk.subnet import Subnet
-from pytao.sdk.transfer import Transfer
-from pytao.sdk.view import View
-from pytao.sdk.wallet import Wallet
-from pytao.sdk.weights import Weights
+from taocli.sdk.client import Client
+from taocli.sdk.delegate import Delegate
+from taocli.sdk.root import Root
+from taocli.sdk.stake import Stake
+from taocli.sdk.subnet import Subnet
+from taocli.sdk.transfer import Transfer
+from taocli.sdk.view import View
+from taocli.sdk.wallet import Wallet
+from taocli.sdk.weights import Weights
 from tests.conftest import make_completed_process
 
 
 class TestClientInit:
-    @patch("pytao.runner.subprocess.run")
+    @patch("taocli.runner.subprocess.run")
     def test_default_init(self, mock_run):
         mock_run.return_value = make_completed_process()
         c = Client()
@@ -30,7 +30,7 @@ class TestClientInit:
         assert isinstance(c.root, Root)
         assert isinstance(c.view, View)
 
-    @patch("pytao.runner.subprocess.run")
+    @patch("taocli.runner.subprocess.run")
     def test_custom_init(self, mock_run):
         mock_run.return_value = make_completed_process()
         c = Client(
@@ -52,14 +52,14 @@ class TestClientInit:
 
 
 class TestClientMethods:
-    @patch("pytao.runner.subprocess.run")
+    @patch("taocli.runner.subprocess.run")
     def test_balance(self, mock_run):
         mock_run.return_value = make_completed_process(stdout='{"free": 100}')
         c = Client()
         result = c.balance()
         assert result == {"free": 100}
 
-    @patch("pytao.runner.subprocess.run")
+    @patch("taocli.runner.subprocess.run")
     def test_balance_with_address(self, mock_run):
         mock_run.return_value = make_completed_process(stdout='{"free": 50}')
         c = Client()
@@ -68,7 +68,7 @@ class TestClientMethods:
         assert "--address" in cmd
         assert "5G..." in cmd
 
-    @patch("pytao.runner.subprocess.run")
+    @patch("taocli.runner.subprocess.run")
     def test_balance_at_block(self, mock_run):
         mock_run.return_value = make_completed_process(stdout='{"free": 50}')
         c = Client()
@@ -77,14 +77,14 @@ class TestClientMethods:
         assert "--at-block" in cmd
         assert "1000" in cmd
 
-    @patch("pytao.runner.subprocess.run")
+    @patch("taocli.runner.subprocess.run")
     def test_doctor(self, mock_run):
         mock_run.return_value = make_completed_process(stdout="All checks passed\n")
         c = Client()
         result = c.doctor()
         assert "All checks passed" in result
 
-    @patch("pytao.runner.subprocess.run")
+    @patch("taocli.runner.subprocess.run")
     def test_version(self, mock_run):
         mock_run.return_value = make_completed_process(stdout="agcli 0.1.0\n")
         c = Client()

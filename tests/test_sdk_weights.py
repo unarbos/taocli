@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from pytao.runner import AgcliRunner
-from pytao.sdk.weights import Weights
+from taocli.runner import AgcliRunner
+from taocli.sdk.weights import Weights
 
 
 @pytest.fixture

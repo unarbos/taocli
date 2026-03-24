@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from pytao.runner import AgcliRunner
-from pytao.sdk.subnet import Subnet
+from taocli.runner import AgcliRunner
+from taocli.sdk.subnet import Subnet
 
 
 @pytest.fixture

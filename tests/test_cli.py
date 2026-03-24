@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from click.testing import CliRunner
 
-from pytao.cli.main import COMMAND_GROUPS, main
-from pytao.runner import AgcliError
+from taocli.cli.main import COMMAND_GROUPS, main
+from taocli.runner import AgcliError
 from tests.conftest import make_completed_process
 
 # Reference the module object for patching (not the click command)
-_cli_main_module = sys.modules["pytao.cli.main"]
+_cli_main_module = sys.modules["taocli.cli.main"]
 
 
 @pytest.fixture
@@ -25,18 +25,18 @@ class TestCLIHelp:
     def test_no_args_shows_help(self, cli_runner):
         result = cli_runner.invoke(main, [])
         assert result.exit_code == 0
-        assert "pytao" in result.output
+        assert "taocli" in result.output
         assert "Available commands" in result.output
 
     def test_help_flag(self, cli_runner):
         result = cli_runner.invoke(main, ["--help"])
         assert result.exit_code == 0
-        assert "pytao" in result.output
+        assert "taocli" in result.output
 
     def test_version_flag(self, cli_runner):
         result = cli_runner.invoke(main, ["--version"])
         assert result.exit_code == 0
-        assert "pytao" in result.output
+        assert "taocli" in result.output
 
     def test_available_commands_listed(self, cli_runner):
         result = cli_runner.invoke(main, [])

@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from pytao.runner import AgcliError, AgcliRunner
+from taocli.runner import AgcliError, AgcliRunner
 from tests.conftest import make_completed_process
 
 
@@ -195,12 +195,12 @@ class TestRunJson:
 class TestFindBinary:
     def test_find_binary_exists(self):
         r = AgcliRunner()
-        with patch("pytao.runner.shutil.which", return_value="/usr/bin/agcli"):
+        with patch("taocli.runner.shutil.which", return_value="/usr/bin/agcli"):
             assert r.find_binary() == "/usr/bin/agcli"
 
     def test_find_binary_missing(self):
         r = AgcliRunner()
-        with patch("pytao.runner.shutil.which", return_value=None):
+        with patch("taocli.runner.shutil.which", return_value=None):
             assert r.find_binary() is None
 
 

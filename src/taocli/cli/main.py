@@ -6,7 +6,7 @@ import sys
 
 import click
 
-from pytao.runner import AgcliError, AgcliRunner
+from taocli.runner import AgcliError, AgcliRunner
 
 # All agcli command groups and top-level commands
 COMMAND_GROUPS = [
@@ -58,19 +58,19 @@ COMMAND_GROUPS = [
         allow_interspersed_args=False,
     ),
 )
-@click.option("--agcli-binary", default=None, envvar="PYTAO_AGCLI_BINARY", help="Path to agcli binary")
-@click.option("--version", is_flag=True, help="Show pytao version")
+@click.option("--agcli-binary", default=None, envvar="TAOCLI_AGCLI_BINARY", help="Path to agcli binary")
+@click.option("--version", is_flag=True, help="Show taocli version")
 @click.argument("args", nargs=-1, type=click.UNPROCESSED)
 @click.pass_context
 def main(ctx: click.Context, agcli_binary: str | None, version: bool, args: tuple[str, ...]) -> None:
-    """pytao — Python wrapper for agcli (Bittensor CLI).
+    """taocli — Python wrapper for agcli (Bittensor CLI).
 
-    All commands are passed through to agcli. Use pytao exactly as you would use agcli.
+    All commands are passed through to agcli. Use taocli exactly as you would use agcli.
     """
     if version:
-        from pytao import __version__
+        from taocli import __version__
 
-        click.echo(f"pytao {__version__}")
+        click.echo(f"taocli {__version__}")
         return
 
     if not args:

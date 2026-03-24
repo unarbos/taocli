@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pytao.sdk.base import SdkModule
+from taocli.sdk.base import SdkModule
 
 
 class View(SdkModule):

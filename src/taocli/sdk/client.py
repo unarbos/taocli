@@ -1,22 +1,22 @@
-"""Client — main entry point for the pytao SDK."""
+"""Client — main entry point for the taocli SDK."""
 
 from __future__ import annotations
 
 from typing import Any
 
-from pytao.runner import AgcliRunner
-from pytao.sdk.delegate import Delegate
-from pytao.sdk.root import Root
-from pytao.sdk.stake import Stake
-from pytao.sdk.subnet import Subnet
-from pytao.sdk.transfer import Transfer
-from pytao.sdk.view import View
-from pytao.sdk.wallet import Wallet
-from pytao.sdk.weights import Weights
+from taocli.runner import AgcliRunner
+from taocli.sdk.delegate import Delegate
+from taocli.sdk.root import Root
+from taocli.sdk.stake import Stake
+from taocli.sdk.subnet import Subnet
+from taocli.sdk.transfer import Transfer
+from taocli.sdk.view import View
+from taocli.sdk.wallet import Wallet
+from taocli.sdk.weights import Weights
 
 
 class Client:
-    """Main pytao client — provides access to all SDK modules."""
+    """Main taocli client — provides access to all SDK modules."""
 
     def __init__(
         self,

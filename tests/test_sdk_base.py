@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from pytao.runner import AgcliRunner
-from pytao.sdk.base import SdkModule
+from taocli.runner import AgcliRunner
+from taocli.sdk.base import SdkModule
 
 
 class TestSdkModule:

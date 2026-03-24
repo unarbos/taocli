@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pytao"
+name = "tao-cli"
 version = "0.1.0"
 description = "Python CLI + SDK wrapper for agcli — Bittensor staking, transfers, wallets, weights, subnets, and more"
 readme = "README.md"
@@ -30,15 +30,15 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/unarbos/pytao"
-Repository = "https://github.com/unarbos/pytao"
-Issues = "https://github.com/unarbos/pytao/issues"
+Homepage = "https://github.com/unarbos/tao-cli"
+Repository = "https://github.com/unarbos/tao-cli"
+Issues = "https://github.com/unarbos/tao-cli/issues"
 
 [project.scripts]
-pytao = "pytao.cli:main"
+taocli = "taocli.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pytao"]
+packages = ["src/taocli"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -58,7 +58,7 @@ warn_return_any = true
 warn_unused_configs = true
 
 [tool.coverage.run]
-source = ["pytao"]
+source = ["taocli"]
 
 [tool.coverage.report]
 fail_under = 100
