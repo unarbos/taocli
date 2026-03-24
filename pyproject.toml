@@ -3,8 +3,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tao-cli"
-version = "0.1.0"
+name = "taocli"
+version = "0.2.0"
 description = "Python CLI + SDK wrapper for agcli — Bittensor staking, transfers, wallets, weights, subnets, and more"
 readme = "README.md"
 license = "MIT"
@@ -24,15 +24,15 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: System :: Systems Administration",
 ]
-keywords = ["bittensor", "agcli", "tao", "staking", "blockchain"]
+keywords = ["bittensor", "agcli", "taocli", "tao", "staking", "blockchain"]
 dependencies = [
     "click>=8.0",
 ]
 
 [project.urls]
-Homepage = "https://github.com/unarbos/tao-cli"
-Repository = "https://github.com/unarbos/tao-cli"
-Issues = "https://github.com/unarbos/tao-cli/issues"
+Homepage = "https://github.com/unarbos/taocli"
+Repository = "https://github.com/unarbos/taocli"
+Issues = "https://github.com/unarbos/taocli/issues"
 
 [project.scripts]
 taocli = "taocli.cli:main"

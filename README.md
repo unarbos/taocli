@@ -1,15 +1,15 @@
-# tao-cli
+# taocli
 
 Python CLI + SDK wrapper for [agcli](https://github.com/unarbos/agcli) — Bittensor staking, transfers, wallets, weights, subnets, and more.
 
-[![CI](https://github.com/unarbos/tao-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/unarbos/tao-cli/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/unarbos/tao-cli/branch/main/graph/badge.svg)](https://codecov.io/gh/unarbos/tao-cli)
-[![PyPI](https://img.shields.io/pypi/v/tao-cli)](https://pypi.org/project/tao-cli/)
+[![CI](https://github.com/unarbos/taocli/actions/workflows/ci.yml/badge.svg)](https://github.com/unarbos/taocli/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/unarbos/taocli/branch/main/graph/badge.svg)](https://codecov.io/gh/unarbos/taocli)
+[![PyPI](https://img.shields.io/pypi/v/taocli)](https://pypi.org/project/taocli/)
 
 ## Install
 
 ```bash
-uv pip install tao-cli
+uv pip install taocli
 ```
 
 Requires the `agcli` binary on your PATH. See [agcli releases](https://github.com/unarbos/agcli/releases).
