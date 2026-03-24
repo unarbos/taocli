@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,6 +11,9 @@ from click.testing import CliRunner
 from pytao.cli.main import COMMAND_GROUPS, main
 from pytao.runner import AgcliError
 from tests.conftest import make_completed_process
+
+# Reference the module object for patching (not the click command)
+_cli_main_module = sys.modules["pytao.cli.main"]
 
 
 @pytest.fixture
@@ -41,7 +45,7 @@ class TestCLIHelp:
 
 
 class TestCLIPassThrough:
-    @patch("pytao.cli.main.AgcliRunner")
+    @patch.object(_cli_main_module, "AgcliRunner")
     def test_passthrough_wallet_list(self, mock_cls, cli_runner):
         mock_instance = MagicMock()
         mock_instance.run.return_value = make_completed_process(stdout="wallet list\n")
@@ -53,7 +57,7 @@ class TestCLIPassThrough:
         args = mock_instance.run.call_args
         assert list(args[0][0]) == ["wallet", "list"]
 
-    @patch("pytao.cli.main.AgcliRunner")
+    @patch.object(_cli_main_module, "AgcliRunner")
     def test_passthrough_with_flags(self, mock_cls, cli_runner):
         mock_instance = MagicMock()
         mock_instance.run.return_value = make_completed_process(stdout="ok\n")
@@ -66,7 +70,7 @@ class TestCLIPassThrough:
         assert "--amount" in args
         assert "10" in args
 
-    @patch("pytao.cli.main.AgcliRunner")
+    @patch.object(_cli_main_module, "AgcliRunner")
     def test_passthrough_nonzero_exit(self, mock_cls, cli_runner):
         mock_instance = MagicMock()
         mock_instance.run.return_value = make_completed_process(returncode=1, stderr="error msg\n")
@@ -74,7 +78,7 @@ class TestCLIPassThrough:
         result = cli_runner.invoke(main, ["bad-command"])
         assert result.exit_code == 1
 
-    @patch("pytao.cli.main.AgcliRunner")
+    @patch.object(_cli_main_module, "AgcliRunner")
     def test_passthrough_stderr(self, mock_cls, cli_runner):
         mock_instance = MagicMock()
         mock_instance.run.return_value = make_completed_process(stdout="", stderr="warning\n", returncode=0)
@@ -82,7 +86,7 @@ class TestCLIPassThrough:
         result = cli_runner.invoke(main, ["doctor"])
         assert result.exit_code == 0
 
-    @patch("pytao.cli.main.AgcliRunner")
+    @patch.object(_cli_main_module, "AgcliRunner")
     def test_passthrough_agcli_error(self, mock_cls, cli_runner):
         mock_instance = MagicMock()
         mock_instance.run.side_effect = AgcliError("binary not found", returncode=-1)
@@ -91,7 +95,7 @@ class TestCLIPassThrough:
         assert result.exit_code == 1
         assert "Error" in result.output
 
-    @patch("pytao.cli.main.AgcliRunner")
+    @patch.object(_cli_main_module, "AgcliRunner")
     def test_custom_binary(self, mock_cls, cli_runner):
         mock_instance = MagicMock()
         mock_instance.run.return_value = make_completed_process(stdout="ok\n")
