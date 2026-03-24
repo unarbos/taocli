@@ -2,6 +2,18 @@
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
+
+def _pyproject_version() -> str:
+    """Read version from pyproject.toml so the test stays in sync automatically."""
+    pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+    text = pyproject.read_text()
+    m = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+    assert m, "version not found in pyproject.toml"
+    return m.group(1)
+
 
 def test_imports():
     from taocli import (
@@ -43,7 +55,7 @@ def test_imports():
         __version__,
     )
 
-    assert __version__ == "0.6.0"
+    assert __version__ == _pyproject_version()
     assert Client is not None
     assert Wallet is not None
     assert Stake is not None

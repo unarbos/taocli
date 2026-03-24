@@ -4,12 +4,12 @@ Python CLI + SDK wrapper for [agcli](https://github.com/unarbos/agcli) — Bitte
 
 [![CI](https://github.com/unarbos/taocli/actions/workflows/ci.yml/badge.svg)](https://github.com/unarbos/taocli/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/unarbos/taocli/branch/main/graph/badge.svg)](https://codecov.io/gh/unarbos/taocli)
-[![PyPI](https://img.shields.io/pypi/v/taocli)](https://pypi.org/project/taocli/)
+[![PyPI](https://img.shields.io/pypi/v/tao-cli)](https://pypi.org/project/tao-cli/)
 
 ## Install
 
 ```bash
-uv pip install taocli
+uv pip install tao-cli
 ```
 
 Requires the `agcli` binary on your PATH. See [agcli releases](https://github.com/unarbos/agcli/releases).
