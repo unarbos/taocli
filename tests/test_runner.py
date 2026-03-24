@@ -97,6 +97,44 @@ class TestBundledBinaryResolution:
         ):
             assert find_bundled_agcli_binary() == fake_path
 
+    def test_find_bundled_binary_found_for_arm64_alias(self):
+        fake_path = "/tmp/taocli/bin/darwin/aarch64/agcli"
+        fake_candidate = type(
+            "FakeCandidate",
+            (),
+            {
+                "is_file": lambda self: True,
+                "__str__": lambda self: fake_path,
+            },
+        )()
+
+        with (
+            patch("taocli.runner.platform.system", return_value="Darwin"),
+            patch("taocli.runner.platform.machine", return_value="arm64"),
+            patch("taocli.runner._bundled_candidate", return_value=fake_candidate),
+            patch("taocli.runner._ensure_executable", return_value=True),
+        ):
+            assert find_bundled_agcli_binary() == fake_path
+
+    def test_find_bundled_binary_found_for_aarch64(self):
+        fake_path = "/tmp/taocli/bin/linux/aarch64/agcli"
+        fake_candidate = type(
+            "FakeCandidate",
+            (),
+            {
+                "is_file": lambda self: True,
+                "__str__": lambda self: fake_path,
+            },
+        )()
+
+        with (
+            patch("taocli.runner.platform.system", return_value="Linux"),
+            patch("taocli.runner.platform.machine", return_value="aarch64"),
+            patch("taocli.runner._bundled_candidate", return_value=fake_candidate),
+            patch("taocli.runner._ensure_executable", return_value=True),
+        ):
+            assert find_bundled_agcli_binary() == fake_path
+
     def test_find_bundled_binary_not_executable(self):
         fake_path = "/tmp/taocli/bin/linux/x86_64/agcli"
         fake_candidate = type(
