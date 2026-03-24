@@ -25,3 +25,15 @@ class Config(SdkModule):
     def reset(self) -> Any:
         """Reset configuration to defaults."""
         return self._run(["config", "reset"])
+
+    def path(self) -> Any:
+        """Show config file path."""
+        return self._run(["config", "path"])
+
+    def cache_clear(self) -> Any:
+        """Clear the disk cache (subnet info, dynamic info)."""
+        return self._run(["config", "cache-clear"])
+
+    def cache_info(self) -> Any:
+        """Show disk cache info (entries, size, path)."""
+        return self._run(["config", "cache-info"])

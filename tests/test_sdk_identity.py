@@ -34,6 +34,17 @@ class TestIdentity:
         cmd = mock_subprocess.call_args[0][0]
         assert "--address" in cmd
 
+    def test_set_subnet(self, identity, mock_subprocess):
+        identity.set_subnet(netuid=1, name="My Subnet")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "identity" in cmd and "set-subnet" in cmd
+        assert "--netuid" in cmd and "--name" in cmd
+
+    def test_set_subnet_all_options(self, identity, mock_subprocess):
+        identity.set_subnet(netuid=1, name="SN", github="https://github.com/x", url="https://x.com")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "--netuid" in cmd and "--name" in cmd and "--github" in cmd and "--url" in cmd
+
     def test_remove(self, identity, mock_subprocess):
         identity.remove()
         cmd = mock_subprocess.call_args[0][0]

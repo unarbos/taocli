@@ -33,3 +33,18 @@ class TestConfig:
         config.reset()
         cmd = mock_subprocess.call_args[0][0]
         assert "config" in cmd and "reset" in cmd
+
+    def test_path(self, config, mock_subprocess):
+        config.path()
+        cmd = mock_subprocess.call_args[0][0]
+        assert "config" in cmd and "path" in cmd
+
+    def test_cache_clear(self, config, mock_subprocess):
+        config.cache_clear()
+        cmd = mock_subprocess.call_args[0][0]
+        assert "config" in cmd and "cache-clear" in cmd
+
+    def test_cache_info(self, config, mock_subprocess):
+        config.cache_info()
+        cmd = mock_subprocess.call_args[0][0]
+        assert "config" in cmd and "cache-info" in cmd

@@ -72,12 +72,12 @@ All modules are accessible as attributes on the `Client` instance.
 | **View** | `c.view` | Portfolio, network, dynamic, neuron, validators, analytics |
 | **Delegate** | `c.delegate` | Show, list delegates; adjust take |
 | **Root** | `c.root` | Root network registration and weights |
-| **Identity** | `c.identity` | Set, get, remove on-chain identity |
+| **Identity** | `c.identity` | Set, get, remove on-chain + subnet identity |
 | **Proxy** | `c.proxy` | Add, remove, pure, announced proxy accounts |
 | **Serve** | `c.serve` | Serve axon/prometheus endpoints |
 | **Commitment** | `c.commitment` | Set, get, list miner commitments |
-| **Config** | `c.config` | Get, set, list, reset local config |
-| **Swap** | `c.swap` | Schedule and check coldkey swaps |
+| **Config** | `c.config` | Get, set, list, reset config; cache management |
+| **Swap** | `c.swap` | Hotkey swap, coldkey swap, EVM key association |
 | **Admin** | `c.admin` | Sudo operations — set hyperparameters |
 | **Audit** | `c.audit` | Security audit of account exposure |
 | **Explain** | `c.explain` | Built-in Bittensor concept reference |

@@ -24,6 +24,26 @@ class Identity(SdkModule):
         args += self._opt("--address", address)
         return self._run(args)
 
+    def set_subnet(
+        self,
+        netuid: int,
+        name: str,
+        github: str | None = None,
+        url: str | None = None,
+    ) -> Any:
+        """Set subnet identity (subnet owner only).
+
+        Args:
+            netuid: Subnet UID.
+            name: Subnet display name.
+            github: GitHub URL for the subnet.
+            url: Website URL for the subnet.
+        """
+        args = ["identity", "set-subnet", "--netuid", str(netuid), "--name", name]
+        args += self._opt("--github", github)
+        args += self._opt("--url", url)
+        return self._run(args)
+
     def remove(self) -> Any:
         """Remove on-chain identity."""
         return self._run(["identity", "remove"])
