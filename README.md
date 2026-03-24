@@ -57,6 +57,46 @@ c.view.portfolio()
 c.view.network()
 ```
 
+## SDK Modules
+
+All modules are accessible as attributes on the `Client` instance.
+
+| Module | Attribute | Description |
+|--------|-----------|-------------|
+| **Balance** | `c.balance()` | Query account balances |
+| **Wallet** | `c.wallet` | Create, list, import, sign, verify wallets |
+| **Stake** | `c.stake` | Add, remove, move, swap stake; limit orders; auto-compound |
+| **Transfer** | `c.transfer` | Send TAO between accounts |
+| **Subnet** | `c.subnet` | List, register, metagraph, health, cache, dissolve |
+| **Weights** | `c.weights` | Set, commit, reveal, commit-reveal weights |
+| **View** | `c.view` | Portfolio, network, dynamic, neuron, validators, analytics |
+| **Delegate** | `c.delegate` | Show, list delegates; adjust take |
+| **Root** | `c.root` | Root network registration and weights |
+| **Identity** | `c.identity` | Set, get, remove on-chain identity |
+| **Proxy** | `c.proxy` | Add, remove, pure, announced proxy accounts |
+| **Serve** | `c.serve` | Serve axon/prometheus endpoints |
+| **Commitment** | `c.commitment` | Set, get, list miner commitments |
+| **Config** | `c.config` | Get, set, list, reset local config |
+| **Swap** | `c.swap` | Schedule and check coldkey swaps |
+| **Admin** | `c.admin` | Sudo operations — set hyperparameters |
+| **Audit** | `c.audit` | Security audit of account exposure |
+| **Explain** | `c.explain` | Built-in Bittensor concept reference |
+| **Block** | `c.block` | Query block info, latest, ranges |
+| **Diff** | `c.diff` | Compare state between blocks |
+| **Multisig** | `c.multisig` | Submit, approve, execute threshold calls |
+| **Crowdloan** | `c.crowdloan` | Create, contribute, manage crowdloans |
+| **Liquidity** | `c.liquidity` | Add, remove, modify AMM positions |
+| **Subscribe** | `c.subscribe` | Subscribe to blocks and events |
+| **Scheduler** | `c.scheduler` | Schedule on-chain calls |
+| **Preimage** | `c.preimage` | Store governance preimages |
+| **Contracts** | `c.contracts` | Upload, instantiate, call WASM contracts |
+| **EVM** | `c.evm` | Call EVM contracts, withdraw to Substrate |
+| **SafeMode** | `c.safe_mode` | Enter/exit safe mode |
+| **Drand** | `c.drand` | Write drand randomness pulses |
+| **Localnet** | `c.localnet` | Start, stop, reset local dev chain |
+| **Batch** | `c.batch` | Run batch extrinsics from JSON |
+| **Utils** | `c.utils` | Convert denominations, measure latency |
+
 ## License
 
 MIT

@@ -19,6 +19,7 @@ class Evm(SdkModule):
         gas_limit: int | None = None,
         max_fee_per_gas: str | None = None,
     ) -> Any:
+        """Call an EVM smart contract."""
         cmd = ["evm", "call", "--source", source, "--target", target, "--input", input]
         cmd += self._opt("--value", value)
         cmd += self._opt("--gas-limit", gas_limit)
@@ -26,4 +27,5 @@ class Evm(SdkModule):
         return self._run(cmd)
 
     def withdraw(self, address: str, amount: str) -> Any:
+        """Withdraw funds from EVM to Substrate."""
         return self._run(["evm", "withdraw", "--address", address, "--amount", amount])

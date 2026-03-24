@@ -11,9 +11,11 @@ class Multisig(SdkModule):
     """Multisig operations — submit, approve, execute, cancel threshold calls."""
 
     def address(self, signatories: str, threshold: int) -> Any:
+        """Derive the multisig address from signatories and threshold."""
         return self._run(["multisig", "address", "--signatories", signatories, "--threshold", str(threshold)])
 
     def submit(self, others: str, threshold: int, pallet: str, call: str, args: str | None = None) -> Any:
+        """Submit a new multisig call for approval."""
         cmd = [
             "multisig",
             "submit",
@@ -30,6 +32,7 @@ class Multisig(SdkModule):
         return self._run(cmd)
 
     def approve(self, others: str, threshold: int, call_hash: str) -> Any:
+        """Approve a pending multisig call."""
         return self._run(
             ["multisig", "approve", "--others", others, "--threshold", str(threshold), "--call-hash", call_hash]
         )
@@ -44,6 +47,7 @@ class Multisig(SdkModule):
         timepoint_height: int | None = None,
         timepoint_index: int | None = None,
     ) -> Any:
+        """Execute an approved multisig call."""
         cmd = [
             "multisig",
             "execute",
@@ -69,6 +73,7 @@ class Multisig(SdkModule):
         timepoint_height: int,
         timepoint_index: int,
     ) -> Any:
+        """Cancel a pending multisig call."""
         return self._run(
             [
                 "multisig",
@@ -87,4 +92,5 @@ class Multisig(SdkModule):
         )
 
     def list(self, address: str) -> Any:
+        """List pending multisig calls for an address."""
         return self._run(["multisig", "list", "--address", address])

@@ -11,6 +11,7 @@ class Contracts(SdkModule):
     """WASM contract operations — upload, instantiate, call, remove code."""
 
     def upload(self, code: str, storage_deposit_limit: str | None = None) -> Any:
+        """Upload WASM contract code to the chain."""
         cmd = ["contracts", "upload", "--code", code]
         cmd += self._opt("--storage-deposit-limit", storage_deposit_limit)
         return self._run(cmd)
@@ -25,6 +26,7 @@ class Contracts(SdkModule):
         gas_proof_size: int | None = None,
         storage_deposit_limit: str | None = None,
     ) -> Any:
+        """Instantiate a contract from uploaded code."""
         cmd = [
             "contracts",
             "instantiate",
@@ -51,6 +53,7 @@ class Contracts(SdkModule):
         gas_proof_size: int | None = None,
         storage_deposit_limit: str | None = None,
     ) -> Any:
+        """Call a deployed contract."""
         cmd = ["contracts", "call", "--contract", contract, "--value", value, "--data", data]
         cmd += self._opt("--gas-ref-time", gas_ref_time)
         cmd += self._opt("--gas-proof-size", gas_proof_size)
@@ -58,4 +61,5 @@ class Contracts(SdkModule):
         return self._run(cmd)
 
     def remove_code(self, code_hash: str) -> Any:
+        """Remove uploaded contract code."""
         return self._run(["contracts", "remove-code", "--code-hash", code_hash])

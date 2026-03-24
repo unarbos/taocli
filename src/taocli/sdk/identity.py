@@ -11,6 +11,7 @@ class Identity(SdkModule):
     """On-chain identity operations — set, get, remove."""
 
     def set(self, name: str | None = None, url: str | None = None, description: str | None = None) -> Any:
+        """Set on-chain identity fields (name, URL, description)."""
         args = ["identity", "set"]
         args += self._opt("--name", name)
         args += self._opt("--url", url)
@@ -18,9 +19,11 @@ class Identity(SdkModule):
         return self._run(args)
 
     def get(self, address: str | None = None) -> Any:
+        """Get on-chain identity for an address."""
         args = ["identity", "get"]
         args += self._opt("--address", address)
         return self._run(args)
 
     def remove(self) -> Any:
+        """Remove on-chain identity."""
         return self._run(["identity", "remove"])

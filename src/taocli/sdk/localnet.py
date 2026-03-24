@@ -18,6 +18,7 @@ class Localnet(SdkModule):
         wait: bool = True,
         timeout: int | None = None,
     ) -> Any:
+        """Start a local development chain via Docker."""
         cmd = ["localnet", "start"]
         cmd += self._opt("--image", image)
         cmd += self._opt("--container", container)
@@ -27,11 +28,13 @@ class Localnet(SdkModule):
         return self._run(cmd)
 
     def stop(self, container: str | None = None) -> Any:
+        """Stop the local chain."""
         cmd = ["localnet", "stop"]
         cmd += self._opt("--container", container)
         return self._run(cmd)
 
     def status(self, container: str | None = None, port: int | None = None) -> Any:
+        """Check the status of the local chain."""
         cmd = ["localnet", "status"]
         cmd += self._opt("--container", container)
         cmd += self._opt("--port", port)
@@ -44,6 +47,7 @@ class Localnet(SdkModule):
         port: int | None = None,
         timeout: int | None = None,
     ) -> Any:
+        """Reset and restart the local chain."""
         cmd = ["localnet", "reset"]
         cmd += self._opt("--image", image)
         cmd += self._opt("--container", container)
@@ -52,6 +56,7 @@ class Localnet(SdkModule):
         return self._run(cmd)
 
     def logs(self, container: str | None = None, tail: int | None = None) -> str:
+        """View logs from the local chain container."""
         cmd = ["localnet", "logs"]
         cmd += self._opt("--container", container)
         cmd += self._opt("--tail", tail)
@@ -64,6 +69,7 @@ class Localnet(SdkModule):
         port: int | None = None,
         no_start: bool = False,
     ) -> Any:
+        """Scaffold a local chain environment with config."""
         cmd = ["localnet", "scaffold"]
         cmd += self._opt("--config", config)
         cmd += self._opt("--image", image)

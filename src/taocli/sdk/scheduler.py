@@ -20,6 +20,7 @@ class Scheduler(SdkModule):
         repeat_every: int | None = None,
         repeat_count: int | None = None,
     ) -> Any:
+        """Schedule an on-chain call at a future block."""
         cmd = ["scheduler", "schedule", "--when", str(when), "--pallet", pallet, "--call", call]
         cmd += self._opt("--args", args)
         cmd += self._opt("--priority", priority)
@@ -38,6 +39,7 @@ class Scheduler(SdkModule):
         repeat_every: int | None = None,
         repeat_count: int | None = None,
     ) -> Any:
+        """Schedule a named on-chain call at a future block."""
         cmd = ["scheduler", "schedule-named", "--id", id, "--when", str(when), "--pallet", pallet, "--call", call]
         cmd += self._opt("--args", args)
         cmd += self._opt("--priority", priority)
@@ -46,7 +48,9 @@ class Scheduler(SdkModule):
         return self._run(cmd)
 
     def cancel(self, when: int, index: int) -> Any:
+        """Cancel a scheduled call by block and index."""
         return self._run(["scheduler", "cancel", "--when", str(when), "--index", str(index)])
 
     def cancel_named(self, id: str) -> Any:
+        """Cancel a named scheduled call by ID."""
         return self._run(["scheduler", "cancel-named", "--id", id])

@@ -9,6 +9,7 @@ class Subscribe(SdkModule):
     """Subscribe to on-chain events — blocks and filtered events."""
 
     def blocks(self) -> str:
+        """Subscribe to new block headers."""
         return self._run_raw(["subscribe", "blocks"])
 
     def events(
@@ -17,6 +18,7 @@ class Subscribe(SdkModule):
         netuid: int | None = None,
         account: str | None = None,
     ) -> str:
+        """Subscribe to on-chain events with optional filters."""
         cmd = ["subscribe", "events"]
         cmd += self._opt("--filter", filter)
         cmd += self._opt("--netuid", netuid)
