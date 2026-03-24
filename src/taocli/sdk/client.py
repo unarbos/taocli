@@ -5,15 +5,30 @@ from __future__ import annotations
 from typing import Any
 
 from taocli.runner import AgcliRunner
+from taocli.sdk.admin import Admin
+from taocli.sdk.batch import Batch
+from taocli.sdk.block import Block
 from taocli.sdk.commitment import Commitment
 from taocli.sdk.config import Config
+from taocli.sdk.contracts import Contracts
+from taocli.sdk.crowdloan import Crowdloan
 from taocli.sdk.delegate import Delegate
+from taocli.sdk.diff import Diff
+from taocli.sdk.drand import Drand
+from taocli.sdk.evm import Evm
 from taocli.sdk.identity import Identity
+from taocli.sdk.liquidity import Liquidity
+from taocli.sdk.localnet import Localnet
+from taocli.sdk.multisig import Multisig
+from taocli.sdk.preimage import Preimage
 from taocli.sdk.proxy import Proxy
 from taocli.sdk.root import Root
+from taocli.sdk.safe_mode import SafeMode
+from taocli.sdk.scheduler import Scheduler
 from taocli.sdk.serve import Serve
 from taocli.sdk.stake import Stake
 from taocli.sdk.subnet import Subnet
+from taocli.sdk.subscribe import Subscribe
 from taocli.sdk.swap import Swap
 from taocli.sdk.transfer import Transfer
 from taocli.sdk.utils import Utils
@@ -66,6 +81,21 @@ class Client:
         self.utils = Utils(self._runner)
         self.config = Config(self._runner)
         self.swap = Swap(self._runner)
+        self.admin = Admin(self._runner)
+        self.batch = Batch(self._runner)
+        self.block = Block(self._runner)
+        self.contracts = Contracts(self._runner)
+        self.crowdloan = Crowdloan(self._runner)
+        self.diff = Diff(self._runner)
+        self.drand = Drand(self._runner)
+        self.evm = Evm(self._runner)
+        self.liquidity = Liquidity(self._runner)
+        self.localnet = Localnet(self._runner)
+        self.multisig = Multisig(self._runner)
+        self.preimage = Preimage(self._runner)
+        self.safe_mode = SafeMode(self._runner)
+        self.scheduler = Scheduler(self._runner)
+        self.subscribe = Subscribe(self._runner)
 
     def balance(self, address: str | None = None, at_block: int | None = None) -> Any:
         """Get balance for an address."""

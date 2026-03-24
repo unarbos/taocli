@@ -5,18 +5,33 @@ from __future__ import annotations
 
 def test_imports():
     from taocli import (
+        Admin,
         AgcliError,
         AgcliRunner,
+        Batch,
+        Block,
         Client,
         Commitment,
         Config,
+        Contracts,
+        Crowdloan,
         Delegate,
+        Diff,
+        Drand,
+        Evm,
         Identity,
+        Liquidity,
+        Localnet,
+        Multisig,
+        Preimage,
         Proxy,
         Root,
+        SafeMode,
+        Scheduler,
         Serve,
         Stake,
         Subnet,
+        Subscribe,
         Swap,
         Transfer,
         Utils,
@@ -26,7 +41,7 @@ def test_imports():
         __version__,
     )
 
-    assert __version__ == "0.4.0"
+    assert __version__ == "0.5.0"
     assert Client is not None
     assert Wallet is not None
     assert Stake is not None
@@ -43,6 +58,21 @@ def test_imports():
     assert Utils is not None
     assert Config is not None
     assert Swap is not None
+    assert Admin is not None
+    assert Batch is not None
+    assert Block is not None
+    assert Contracts is not None
+    assert Crowdloan is not None
+    assert Diff is not None
+    assert Drand is not None
+    assert Evm is not None
+    assert Liquidity is not None
+    assert Localnet is not None
+    assert Multisig is not None
+    assert Preimage is not None
+    assert SafeMode is not None
+    assert Scheduler is not None
+    assert Subscribe is not None
     assert AgcliRunner is not None
     assert AgcliError is not None
 

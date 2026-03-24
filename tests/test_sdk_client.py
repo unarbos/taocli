@@ -4,16 +4,31 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+from taocli.sdk.admin import Admin
+from taocli.sdk.batch import Batch
+from taocli.sdk.block import Block
 from taocli.sdk.client import Client
 from taocli.sdk.commitment import Commitment
 from taocli.sdk.config import Config
+from taocli.sdk.contracts import Contracts
+from taocli.sdk.crowdloan import Crowdloan
 from taocli.sdk.delegate import Delegate
+from taocli.sdk.diff import Diff
+from taocli.sdk.drand import Drand
+from taocli.sdk.evm import Evm
 from taocli.sdk.identity import Identity
+from taocli.sdk.liquidity import Liquidity
+from taocli.sdk.localnet import Localnet
+from taocli.sdk.multisig import Multisig
+from taocli.sdk.preimage import Preimage
 from taocli.sdk.proxy import Proxy
 from taocli.sdk.root import Root
+from taocli.sdk.safe_mode import SafeMode
+from taocli.sdk.scheduler import Scheduler
 from taocli.sdk.serve import Serve
 from taocli.sdk.stake import Stake
 from taocli.sdk.subnet import Subnet
+from taocli.sdk.subscribe import Subscribe
 from taocli.sdk.swap import Swap
 from taocli.sdk.transfer import Transfer
 from taocli.sdk.utils import Utils
@@ -43,6 +58,21 @@ class TestClientInit:
         assert isinstance(c.utils, Utils)
         assert isinstance(c.config, Config)
         assert isinstance(c.swap, Swap)
+        assert isinstance(c.admin, Admin)
+        assert isinstance(c.batch, Batch)
+        assert isinstance(c.block, Block)
+        assert isinstance(c.contracts, Contracts)
+        assert isinstance(c.crowdloan, Crowdloan)
+        assert isinstance(c.diff, Diff)
+        assert isinstance(c.drand, Drand)
+        assert isinstance(c.evm, Evm)
+        assert isinstance(c.liquidity, Liquidity)
+        assert isinstance(c.localnet, Localnet)
+        assert isinstance(c.multisig, Multisig)
+        assert isinstance(c.preimage, Preimage)
+        assert isinstance(c.safe_mode, SafeMode)
+        assert isinstance(c.scheduler, Scheduler)
+        assert isinstance(c.subscribe, Subscribe)
 
     @patch("taocli.runner.subprocess.run")
     def test_custom_init(self, mock_run):

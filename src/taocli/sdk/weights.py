@@ -54,3 +54,8 @@ class Weights(SdkModule):
         args = ["weights", "reveal-mechanism", "--netuid", str(netuid), "--weights", weights, "--salt", salt]
         args += self._opt("--version-key", version_key)
         return self._run(args)
+
+    def commit_timelocked(self, netuid: int, weights: str, round: int, salt: str | None = None) -> Any:
+        args = ["weights", "commit-timelocked", "--netuid", str(netuid), "--weights", weights, "--round", str(round)]
+        args += self._opt("--salt", salt)
+        return self._run(args)

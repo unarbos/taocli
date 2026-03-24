@@ -24,3 +24,66 @@ class Proxy(SdkModule):
         args = ["proxy", "list"]
         args += self._opt("--address", address)
         return self._run(args)
+
+    def create_pure(self, proxy_type: str | None = None, delay: int | None = None, index: int | None = None) -> Any:
+        cmd = ["proxy", "create-pure"]
+        cmd += self._opt("--proxy-type", proxy_type)
+        cmd += self._opt("--delay", delay)
+        cmd += self._opt("--index", index)
+        return self._run(cmd)
+
+    def kill_pure(
+        self,
+        spawner: str,
+        proxy_type: str,
+        index: int,
+        height: int,
+        ext_index: int,
+    ) -> Any:
+        return self._run(
+            [
+                "proxy",
+                "kill-pure",
+                "--spawner",
+                spawner,
+                "--proxy-type",
+                proxy_type,
+                "--index",
+                str(index),
+                "--height",
+                str(height),
+                "--ext-index",
+                str(ext_index),
+            ]
+        )
+
+    def announce(self, real: str, call_hash: str) -> Any:
+        return self._run(["proxy", "announce", "--real", real, "--call-hash", call_hash])
+
+    def proxy_announced(
+        self,
+        delegate: str,
+        real: str,
+        pallet: str,
+        call: str,
+        proxy_type: str | None = None,
+        args: str | None = None,
+    ) -> Any:
+        cmd = ["proxy", "proxy-announced", "--delegate", delegate, "--real", real, "--pallet", pallet, "--call", call]
+        cmd += self._opt("--proxy-type", proxy_type)
+        cmd += self._opt("--args", args)
+        return self._run(cmd)
+
+    def reject_announcement(self, delegate: str, call_hash: str) -> Any:
+        return self._run(["proxy", "reject-announcement", "--delegate", delegate, "--call-hash", call_hash])
+
+    def list_announcements(self, address: str | None = None) -> Any:
+        cmd = ["proxy", "list-announcements"]
+        cmd += self._opt("--address", address)
+        return self._run(cmd)
+
+    def remove_all(self) -> Any:
+        return self._run(["proxy", "remove-all"])
+
+    def remove_announcement(self, real: str, call_hash: str) -> Any:
+        return self._run(["proxy", "remove-announcement", "--real", real, "--call-hash", call_hash])

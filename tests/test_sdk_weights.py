@@ -93,3 +93,13 @@ class TestWeights:
         weights.reveal_mechanism(1, "0:100", "abc", version_key=1)
         cmd = mock_subprocess.call_args[0][0]
         assert "--version-key" in cmd
+
+    def test_commit_timelocked(self, weights, mock_subprocess):
+        weights.commit_timelocked(1, "0:100", 42)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "commit-timelocked" in cmd and "--round" in cmd
+
+    def test_commit_timelocked_with_salt(self, weights, mock_subprocess):
+        weights.commit_timelocked(1, "0:100", 42, salt="mysalt")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "--salt" in cmd
