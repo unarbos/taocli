@@ -158,3 +158,58 @@ class TestSubnet:
         subnet.set_emission_split(1, "50,50")
         cmd = mock_subprocess.call_args[0][0]
         assert "set-emission-split" in cmd
+
+    def test_metagraph_save(self, subnet, mock_subprocess):
+        subnet.metagraph(1, save=True)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "--save" in cmd
+
+    def test_cache_load(self, subnet, mock_subprocess):
+        subnet.cache_load(1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "cache-load" in cmd and "--netuid" in cmd
+
+    def test_cache_list(self, subnet, mock_subprocess):
+        subnet.cache_list()
+        cmd = mock_subprocess.call_args[0][0]
+        assert "cache-list" in cmd
+
+    def test_cache_diff(self, subnet, mock_subprocess):
+        subnet.cache_diff(1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "cache-diff" in cmd
+
+    def test_cache_prune(self, subnet, mock_subprocess):
+        subnet.cache_prune()
+        cmd = mock_subprocess.call_args[0][0]
+        assert "cache-prune" in cmd
+
+    def test_register_with_identity(self, subnet, mock_subprocess):
+        subnet.register_with_identity(name="mysubnet")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "register-with-identity" in cmd and "--name" in cmd
+
+    def test_register_leased(self, subnet, mock_subprocess):
+        subnet.register_leased()
+        cmd = mock_subprocess.call_args[0][0]
+        assert "register-leased" in cmd
+
+    def test_terminate_lease(self, subnet, mock_subprocess):
+        subnet.terminate_lease(1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "terminate-lease" in cmd
+
+    def test_root_dissolve(self, subnet, mock_subprocess):
+        subnet.root_dissolve(1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "root-dissolve" in cmd
+
+    def test_watch(self, subnet, mock_subprocess):
+        subnet.watch(1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "watch" in cmd
+
+    def test_monitor(self, subnet, mock_subprocess):
+        subnet.monitor(1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "monitor" in cmd
