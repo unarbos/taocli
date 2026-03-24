@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tao-cli"
-version = "0.3.0"
+version = "0.4.0"
 description = "Python CLI + SDK wrapper for agcli — Bittensor staking, transfers, wallets, weights, subnets, and more"
 readme = "README.md"
 license = "MIT"

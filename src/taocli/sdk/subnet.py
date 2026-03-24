@@ -25,11 +25,19 @@ class Subnet(SdkModule):
         args += self._opt("--at-block", at_block)
         return self._run(args)
 
-    def metagraph(self, netuid: int, uid: int | None = None, full: bool = False, at_block: int | None = None) -> Any:
+    def metagraph(
+        self,
+        netuid: int,
+        uid: int | None = None,
+        full: bool = False,
+        at_block: int | None = None,
+        save: bool = False,
+    ) -> Any:
         args = ["subnet", "metagraph", "--netuid", str(netuid)]
         args += self._opt("--uid", uid)
         args += self._flag("--full", full)
         args += self._opt("--at-block", at_block)
+        args += self._flag("--save", save)
         return self._run(args)
 
     def register(self) -> Any:
@@ -106,3 +114,37 @@ class Subnet(SdkModule):
 
     def set_emission_split(self, netuid: int, weights: str) -> Any:
         return self._run(["subnet", "set-emission-split", "--netuid", str(netuid), "--weights", weights])
+
+    def cache_load(self, netuid: int) -> Any:
+        return self._run(["subnet", "cache-load", "--netuid", str(netuid)])
+
+    def cache_list(self) -> Any:
+        return self._run(["subnet", "cache-list"])
+
+    def cache_diff(self, netuid: int) -> Any:
+        return self._run(["subnet", "cache-diff", "--netuid", str(netuid)])
+
+    def cache_prune(self) -> Any:
+        return self._run(["subnet", "cache-prune"])
+
+    def register_with_identity(self, name: str | None = None) -> Any:
+        args = ["subnet", "register-with-identity"]
+        args += self._opt("--name", name)
+        return self._run(args)
+
+    def register_leased(self, netuid: int | None = None) -> Any:
+        args = ["subnet", "register-leased"]
+        args += self._opt("--netuid", netuid)
+        return self._run(args)
+
+    def terminate_lease(self, netuid: int) -> Any:
+        return self._run(["subnet", "terminate-lease", "--netuid", str(netuid)])
+
+    def root_dissolve(self, netuid: int) -> Any:
+        return self._run(["subnet", "root-dissolve", "--netuid", str(netuid)])
+
+    def watch(self, netuid: int) -> Any:
+        return self._run(["subnet", "watch", "--netuid", str(netuid)])
+
+    def monitor(self, netuid: int) -> Any:
+        return self._run(["subnet", "monitor", "--netuid", str(netuid)])

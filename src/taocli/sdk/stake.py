@@ -47,9 +47,14 @@ class Stake(SdkModule):
         args += self._opt("--hotkey-address", hotkey_address)
         return self._run(args)
 
-    def claim_root(self, netuid: int | None = None) -> Any:
-        args = ["stake", "claim-root"]
-        args += self._opt("--netuid", netuid)
+    def unstake_all_alpha(self, hotkey_address: str | None = None) -> Any:
+        args = ["stake", "unstake-all-alpha"]
+        args += self._opt("--hotkey-address", hotkey_address)
+        return self._run(args)
+
+    def claim_root(self, netuid: int, hotkey_address: str | None = None) -> Any:
+        args = ["stake", "claim-root", "--netuid", str(netuid)]
+        args += self._opt("--hotkey-address", hotkey_address)
         return self._run(args)
 
     def add_limit(self, amount: float, netuid: int, price: float, partial: bool = False) -> Any:

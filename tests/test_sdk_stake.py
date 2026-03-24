@@ -72,15 +72,25 @@ class TestStake:
         cmd = mock_subprocess.call_args[0][0]
         assert "--hotkey-address" in cmd
 
-    def test_claim_root(self, stake, mock_subprocess):
-        stake.claim_root()
+    def test_unstake_all_alpha(self, stake, mock_subprocess):
+        stake.unstake_all_alpha()
         cmd = mock_subprocess.call_args[0][0]
-        assert "claim-root" in cmd
+        assert "unstake-all-alpha" in cmd
 
-    def test_claim_root_with_netuid(self, stake, mock_subprocess):
-        stake.claim_root(netuid=1)
+    def test_unstake_all_alpha_with_hotkey(self, stake, mock_subprocess):
+        stake.unstake_all_alpha(hotkey_address="5G...")
         cmd = mock_subprocess.call_args[0][0]
-        assert "--netuid" in cmd
+        assert "unstake-all-alpha" in cmd and "--hotkey-address" in cmd
+
+    def test_claim_root(self, stake, mock_subprocess):
+        stake.claim_root(1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "claim-root" in cmd and "--netuid" in cmd
+
+    def test_claim_root_with_hotkey(self, stake, mock_subprocess):
+        stake.claim_root(1, hotkey_address="5G...")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "--netuid" in cmd and "--hotkey-address" in cmd
 
     def test_add_limit(self, stake, mock_subprocess):
         stake.add_limit(10.0, 1, 0.5)

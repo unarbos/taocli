@@ -63,3 +63,33 @@ class TestWeights:
         weights.commit_reveal(1, "0:100", wait=True)
         cmd = mock_subprocess.call_args[0][0]
         assert "--wait" in cmd
+
+    def test_set_mechanism(self, weights, mock_subprocess):
+        weights.set_mechanism(1, "0:100")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "set-mechanism" in cmd and "--weights" in cmd
+
+    def test_set_mechanism_with_version_key(self, weights, mock_subprocess):
+        weights.set_mechanism(1, "0:100", version_key=1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "--version-key" in cmd
+
+    def test_commit_mechanism(self, weights, mock_subprocess):
+        weights.commit_mechanism(1, "0:100")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "commit-mechanism" in cmd
+
+    def test_commit_mechanism_with_salt(self, weights, mock_subprocess):
+        weights.commit_mechanism(1, "0:100", salt="abc")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "--salt" in cmd
+
+    def test_reveal_mechanism(self, weights, mock_subprocess):
+        weights.reveal_mechanism(1, "0:100", "abc")
+        cmd = mock_subprocess.call_args[0][0]
+        assert "reveal-mechanism" in cmd and "--salt" in cmd
+
+    def test_reveal_mechanism_with_version_key(self, weights, mock_subprocess):
+        weights.reveal_mechanism(1, "0:100", "abc", version_key=1)
+        cmd = mock_subprocess.call_args[0][0]
+        assert "--version-key" in cmd

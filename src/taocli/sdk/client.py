@@ -5,11 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 from taocli.runner import AgcliRunner
+from taocli.sdk.commitment import Commitment
+from taocli.sdk.config import Config
 from taocli.sdk.delegate import Delegate
+from taocli.sdk.identity import Identity
+from taocli.sdk.proxy import Proxy
 from taocli.sdk.root import Root
+from taocli.sdk.serve import Serve
 from taocli.sdk.stake import Stake
 from taocli.sdk.subnet import Subnet
+from taocli.sdk.swap import Swap
 from taocli.sdk.transfer import Transfer
+from taocli.sdk.utils import Utils
 from taocli.sdk.view import View
 from taocli.sdk.wallet import Wallet
 from taocli.sdk.weights import Weights
@@ -52,6 +59,13 @@ class Client:
         self.delegate = Delegate(self._runner)
         self.root = Root(self._runner)
         self.view = View(self._runner)
+        self.identity = Identity(self._runner)
+        self.proxy = Proxy(self._runner)
+        self.serve = Serve(self._runner)
+        self.commitment = Commitment(self._runner)
+        self.utils = Utils(self._runner)
+        self.config = Config(self._runner)
+        self.swap = Swap(self._runner)
 
     def balance(self, address: str | None = None, at_block: int | None = None) -> Any:
         """Get balance for an address."""

@@ -39,3 +39,18 @@ class Weights(SdkModule):
         args += self._opt("--version-key", version_key)
         args += self._flag("--wait", wait)
         return self._run(args)
+
+    def set_mechanism(self, netuid: int, weights: str, version_key: int | None = None) -> Any:
+        args = ["weights", "set-mechanism", "--netuid", str(netuid), "--weights", weights]
+        args += self._opt("--version-key", version_key)
+        return self._run(args)
+
+    def commit_mechanism(self, netuid: int, weights: str, salt: str | None = None) -> Any:
+        args = ["weights", "commit-mechanism", "--netuid", str(netuid), "--weights", weights]
+        args += self._opt("--salt", salt)
+        return self._run(args)
+
+    def reveal_mechanism(self, netuid: int, weights: str, salt: str, version_key: int | None = None) -> Any:
+        args = ["weights", "reveal-mechanism", "--netuid", str(netuid), "--weights", weights, "--salt", salt]
+        args += self._opt("--version-key", version_key)
+        return self._run(args)
