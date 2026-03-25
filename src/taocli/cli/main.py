@@ -83,7 +83,9 @@ def main(ctx: click.Context, agcli_binary: str | None, version: bool, args: tupl
       c.balance("5G...")
 
     \b
-    Uses a bundled agcli binary when available; otherwise install agcli from:
+    Uses a bundled agcli binary when available. The PyPI package name is
+    `tao-cli`, while the installed command remains `taocli`.
+    Otherwise install agcli from:
     https://github.com/unarbos/agcli/releases
     """
     if version:

@@ -4,15 +4,46 @@ Python CLI + SDK wrapper for [agcli](https://github.com/unarbos/agcli) — Bitte
 
 [![CI](https://github.com/unarbos/taocli/actions/workflows/ci.yml/badge.svg)](https://github.com/unarbos/taocli/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/unarbos/taocli/graph/badge.svg)](https://codecov.io/gh/unarbos/taocli)
-[![PyPI](https://img.shields.io/pypi/v/taocli)](https://pypi.org/project/taocli/)
+[![PyPI](https://img.shields.io/pypi/v/tao-cli)](https://pypi.org/project/tao-cli/)
+
+## Current release status
+
+- `taocli` is the CLI command and Python import name.
+- `tao-cli` is the intended PyPI distribution name.
+- The README CI badge tracks lint/test/coverage only; PyPI publishing now runs in a separate GitHub Actions workflow.
+- The last failed GitHub publish attempted the old `taocli` `0.6.5` package name, which PyPI rejected as too similar to an existing project.
+- The intended public install command is `uv pip install tao-cli` once the refreshed wheels are live from the separate publish workflow.
+- Once those platform wheels are published, supported Linux/macOS installs should work without a separate `agcli` on `PATH` because the bundled-binary path is already implemented in code.
 
 ## Install
 
+### Planned PyPI install
+
 ```bash
-uv pip install taocli
+uv pip install tao-cli
 ```
 
-`taocli` will use a bundled `agcli` binary when the installed wheel includes one for your platform. You can still override it with `--agcli-binary` or `TAOCLI_AGCLI_BINARY`.
+That installs the package, but the command you run stays:
+
+```bash
+taocli --help
+```
+
+Do not use `uv pip install taocli`; the published distribution name is `tao-cli`.
+
+### Current pre-release/source install
+
+Until `tao-cli` wheels are live on PyPI, install from a local checkout:
+
+```bash
+git clone https://github.com/unarbos/taocli
+cd taocli
+uv pip install -e .
+```
+
+Source installs do **not** bundle `agcli`. For now, source installs still require `agcli` on `PATH` or an explicit `--agcli-binary` / `TAOCLI_AGCLI_BINARY` override.
+
+When published as supported Linux/macOS wheels, `tao-cli` will use the bundled `agcli` binary automatically.
 
 Agent/discovery metadata is also shipped in `llms.txt`.
 
@@ -54,10 +85,97 @@ c.transfer.transfer("5G...", 1.0)
 c.subnet.list()
 c.subnet.show(1)
 
+# Weights
+c.weights.set(1, {0: 100, 1: 200}, version_key=7)
+workflow = c.weights.workflow_help(1, {0: 100, 1: 200}, salt="round-42", version_key=7, wait=True)
+print(workflow["commit_reveal"])
+print(workflow["reveal"])
+print(c.weights.troubleshoot_help(1, "IncorrectCommitRevealVersion", {0: 100, 1: 200}, salt="round-42", version_key=7))
+
 # View
 c.view.portfolio()
 c.view.network()
 ```
+
+`c.weights` accepts the native agcli CSV form (`"0:100,1:200"`) plus agent-friendlier mappings, `(uid, weight)` pairs, JSON strings, `-` for stdin, and `@file.json` inputs. Use `workflow_help(...)` when you want copy-pasteable `set`, `commit-reveal`, `commit`, `reveal`, and `status` commands for an operator runbook or agent handoff. For atomic commit-reveal flows, prefer `commit_reveal_runbook_help(...)` or `create_commit_reveal_state_help(...)` first so the original weights, salt, derived hash, and reusable reveal command can be saved and reused if the reveal step stalls.
+
+`save_commit_reveal_state_help(...)`, `load_commit_reveal_state_help(...)`, `recover_reveal_from_state_help(...)`, and `troubleshoot_unrevealed_commit_help(...)` are the recovery path: persist a JSON state record before or during commit, then reload it later to reveal the exact same commit manually instead of losing the original reveal inputs.
+
+`operator_note_for_atomic_commit_reveal_help(...)` wraps that runbook in operator-facing guidance for handoff situations where another person or agent may need to finish the reveal later.
+
+## Weights SDK quick reference
+
+```python
+from taocli import Client
+
+c = Client(network="local")
+
+# Direct set
+c.weights.set(1, {0: 100, 1: 200}, version_key=7)
+
+# Auto commit + reveal
+c.weights.commit_reveal(1, {0: 100, 1: 200}, version_key=7, wait=True)
+
+# Manual workflow hints for operator/agent guidance
+workflow = c.weights.workflow_help(1, {0: 100, 1: 200}, salt="round-42", version_key=7, wait=True)
+# workflow keys: normalized_weights, status, set, commit_reveal, commit, reveal
+
+# Compact troubleshooting runbook for common failures
+troubleshoot = c.weights.troubleshoot_help(
+    1,
+    "IncorrectCommitRevealVersion",
+    {0: 100, 1: 200},
+    salt="round-42",
+    version_key=7,
+)
+# troubleshoot keys: error, likely_cause, next_step, status, normalized_weights, set, commit, reveal, commit_reveal
+
+# Mechanism-specific helper runbook
+mechanism = c.weights.mechanism_workflow_help(
+    1,
+    4,
+    {0: 100, 1: 200},
+    salt="round-42",
+    hash_value="11" * 32,
+    version_key=7,
+)
+# mechanism keys: normalized_weights, status, set_mechanism, reveal_mechanism, optional commit_mechanism
+
+# Mechanism troubleshooting / next-step guidance
+# hash_value is optional here; taocli can derive it from weights + salt.
+print(
+    c.weights.troubleshoot_mechanism_help(
+        1,
+        4,
+        "RevealTooEarly",
+        {0: 100, 1: 200},
+        salt="round-42",
+        version_key=7,
+    )
+)
+
+# Timelocked helper runbook
+print(c.weights.timelocked_workflow_help(1, {0: 100, 1: 200}, 42, salt="round-42", version_key=7))
+# timelocked keys: normalized_weights, status, set, commit_timelocked
+
+# Timelocked troubleshooting / next-step guidance
+print(c.weights.next_timelocked_action(1, {0: 100, 1: 200}, round=42, salt="round-42"))
+
+# Compact live diagnose helpers
+print(c.weights.diagnose_mechanism(1, 4, "RevealTooEarly", {0: 100, 1: 200}, salt="round-42", version_key=7))
+print(c.weights.diagnose_timelocked(1, "ExpiredWeightCommit", {0: 100, 1: 200}, round=42, salt="round-42"))
+```
+
+For commit-reveal flows, check subnet status and hyperparameters first: validator permit, whether commit-reveal is enabled, the required `version_key`, and any rate limits.
+Mechanism-specific and timelocked helpers use the same normalized weights parser, so agents can reuse the exact same payload across direct set, mechanism, and timelocked flows without hand-reformatting.
+When `weights status` output is available, the mechanism and timelocked helpers can now turn it into a recommended next command (`REVEAL`, `RECOMMIT`, `WAIT`, or direct `SET`) instead of only showing static runbooks.
+
+Common troubleshooting shortcuts:
+- `NeuronNoValidatorPermit`: the hotkey is not currently allowed to set weights on that subnet.
+- `IncorrectCommitRevealVersion`: the subnet expects a different `version_key`; inspect subnet hyperparameters before retrying.
+- `RevealTooEarly` / `ExpiredWeightCommit`: the commit-reveal timing window is wrong; check `c.weights.status(netuid)` or `c.weights.workflow_help(...)` first and retry in the correct window.
+- `troubleshoot_help(...)` turns a common runtime error plus optional weights inputs into a compact runbook with likely cause, next step, and normalized retry commands.
+- `workflow_help(...)` is the fastest way to hand an operator or another agent a normalized `status`, `set`, `commit-reveal`, `commit`, and `reveal` runbook for the same weights payload.
 
 ## SDK Modules
 

@@ -109,6 +109,11 @@ class TestCLIPassThrough:
         assert "bundled agcli binary" in result.output
         assert "agcli/releases" in result.output
 
+    def test_help_mentions_tao_cli_distribution(self, cli_runner):
+        result = cli_runner.invoke(main, ["--help"])
+        assert result.exit_code == 0
+        assert "tao-cli" in result.output
+
 
 class TestCommandGroups:
     def test_command_groups_not_empty(self):

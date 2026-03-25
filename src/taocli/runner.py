@@ -147,8 +147,10 @@ class AgcliRunner:
         except FileNotFoundError as exc:
             raise AgcliError(
                 f"agcli binary not found at '{self.binary}'.\n"
-                f"Install taocli with bundled binaries for your platform, or download agcli from: https://github.com/unarbos/agcli/releases\n"
-                f"Or set the path: Client(binary='/path/to/agcli')",
+                "Install the published wheel package 'tao-cli' for your platform "
+                "when available, or download agcli from: "
+                "https://github.com/unarbos/agcli/releases\n"
+                "Or set the path: Client(binary='/path/to/agcli')",
                 returncode=-1,
             ) from exc
         except subprocess.TimeoutExpired as exc:

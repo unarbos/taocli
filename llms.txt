@@ -3,9 +3,13 @@
 taocli is a Python CLI + SDK wrapper for agcli for Bittensor operations.
 
 ## Install
-- `uv pip install taocli`
-- On supported Linux and macOS wheels, taocli bundles the `agcli` binary.
-- Override the binary with `--agcli-binary /path/to/agcli` or `TAOCLI_AGCLI_BINARY=/path/to/agcli`.
+- Planned public install: `uv pip install tao-cli`
+- `taocli` remains the CLI command and Python import name, while `tao-cli` is the PyPI distribution name.
+- Do not use `uv pip install taocli`; that is not the release path.
+- Older `tao-cli` releases on PyPI came from an earlier packaging mistake; the refreshed `0.6.6` publish is still pending.
+- Current development install: clone the repo and run `uv pip install -e .`
+- Only published platform wheels bundle the `agcli` binary automatically.
+- Source installs still require `agcli` on `PATH` or `--agcli-binary /path/to/agcli` / `TAOCLI_AGCLI_BINARY=/path/to/agcli`.
 
 ## CLI usage
 - `taocli balance --address <ss58>`
@@ -66,3 +70,11 @@ client.view.network()
 - If a command fails because agcli is missing, install taocli from a platform wheel or provide `--agcli-binary`.
 - For read operations, prefer JSON-producing SDK methods through `Client`.
 - For weight-setting flows, verify subnet configuration first: validator permit, commit-reveal enabled/disabled, version key, and rate limits.
+- Use `Client().weights.workflow_help(...)` when you need normalized weights plus copy-pasteable `status`, `set`, `commit-reveal`, `commit`, and `reveal` commands for an operator or another agent.
+- For atomic commit-reveal, prefer `Client().weights.commit_reveal_runbook_help(...)` or `Client().weights.create_commit_reveal_state_help(...)` before submitting so the original weights, salt, derived hash, and reusable reveal command can be saved for later recovery.
+- Persist that recovery record with `Client().weights.save_commit_reveal_state_help(...)`, reload it with `Client().weights.load_commit_reveal_state_help(...)`, recover the exact reveal command with `Client().weights.recover_reveal_from_state_help(...)`, and use `Client().weights.troubleshoot_unrevealed_commit_help(...)` when a previous commit exists but the reveal stalled.
+- Use `Client().weights.operator_note_for_atomic_commit_reveal_help(...)` when handing an atomic commit-reveal runbook to an operator or another agent.
+- Use `Client().weights.mechanism_workflow_help(...)` for mechanism-specific set/reveal flows and `Client().weights.timelocked_workflow_help(...)` for drand/timelocked commit flows; both reuse the same normalized weights parsing as `workflow_help(...)`.
+- Use `Client().weights.troubleshoot_help(...)` when you already have a runtime error string and want likely-cause guidance plus normalized retry commands for the same weights payload.
+- Use `Client().weights.troubleshoot_mechanism_help(...)` / `Client().weights.next_mechanism_action(...)` for mechanism-specific reveal/recommit guidance, and `Client().weights.troubleshoot_timelocked_help(...)` / `Client().weights.next_timelocked_action(...)` for timelocked flows driven by live `weights status` output.
+- Common weights troubleshooting: `NeuronNoValidatorPermit` usually means the hotkey is not currently allowed to set weights on that subnet; `IncorrectCommitRevealVersion` means the subnet expects a different `version_key`; `RevealTooEarly` / `ExpiredWeightCommit` mean the commit-reveal timing window is wrong, so check `Client().weights.status(netuid=...)` before retrying.

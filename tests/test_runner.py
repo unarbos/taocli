@@ -324,7 +324,7 @@ class TestRun:
         with pytest.raises(AgcliError) as exc_info:
             r.run(["version"])
         assert "not found" in str(exc_info.value)
-        assert "bundled binaries" in str(exc_info.value)
+        assert "tao-cli" in str(exc_info.value)
         assert exc_info.value.returncode == -1
 
     def test_run_timeout(self, mock_subprocess):
