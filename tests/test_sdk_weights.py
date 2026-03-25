@@ -3375,7 +3375,9 @@ class TestWeights:
 
     def test_status_summary_help_rejects_non_mapping_commit_entry(self, weights: Weights) -> None:
         with pytest.raises(ValueError, match=r"status commits\[1\] must be a mapping"):
-            weights.status_summary_help({"block": 50, "commit_reveal_enabled": True, "reveal_period_epochs": 2, "commits": [123]})
+            weights.status_summary_help(
+                {"block": 50, "commit_reveal_enabled": True, "reveal_period_epochs": 2, "commits": [123]}
+            )
 
     def test_status_summary_help_rejects_non_string_commit_status(self, weights: Weights) -> None:
         with pytest.raises(ValueError, match=r"status commits\[1\]\.status must be a string"):
@@ -3447,7 +3449,8 @@ class TestWeights:
             {"next_action": "REVEAL", "commit_reveal_enabled": True},
         )
         assert reveal_helpers["reason"] == (
-            "A pending mechanism commit is ready to reveal now; provide the original weights and salt to build the reveal command."
+            "A pending mechanism commit is ready to reveal now; provide the original weights and salt "
+            "to build the reveal command."
         )
 
         recommit_helpers = weights._mechanism_next_action_guidance(
@@ -3456,7 +3459,8 @@ class TestWeights:
             {"next_action": "RECOMMIT", "commit_reveal_enabled": True},
         )
         assert recommit_helpers["reason"] == (
-            "A previous pending mechanism commit expired, so a fresh precomputed mechanism hash is required before retrying."
+            "A previous pending mechanism commit expired, so a fresh precomputed mechanism hash is "
+            "required before retrying."
         )
 
         recommit_with_hash = weights._mechanism_next_action_guidance(
@@ -3519,7 +3523,8 @@ class TestWeights:
             {"next_action": "REVEAL", "commit_reveal_enabled": True},
         )
         assert reveal_helpers["reason"] == (
-            "A pending timelocked commit is ready to reveal now; provide the original weights and salt to build the reveal command."
+            "A pending timelocked commit is ready to reveal now; provide the original weights and salt "
+            "to build the reveal command."
         )
 
         direct_recommit = weights._timelocked_next_action_guidance(
@@ -3529,14 +3534,17 @@ class TestWeights:
             version_key=5,
         )
         assert direct_recommit["recommended_command"] == "agcli weights set --netuid 9 --weights 0:100 --version-key 5"
-        assert direct_recommit["reason"] == "The previous timelocked commit expired and direct weight setting is available."
+        assert direct_recommit["reason"] == (
+            "The previous timelocked commit expired and direct weight setting is available."
+        )
 
         recommit_without_inputs = weights._timelocked_next_action_guidance(
             9,
             {"next_action": "RECOMMIT", "commit_reveal_enabled": True},
         )
         assert recommit_without_inputs["reason"] == (
-            "A previous pending timelocked commit expired, so fresh weights and a drand round are required before retrying."
+            "A previous pending timelocked commit expired, so fresh weights and a drand round are "
+            "required before retrying."
         )
 
         no_pending_commit = weights._timelocked_next_action_guidance(
