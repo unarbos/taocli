@@ -3274,3 +3274,298 @@ class TestWeights:
         weights.commit_timelocked(1, {0: 100}, 42, salt="mysalt")
         cmd = mock_subprocess.call_args[0][0]
         assert "--salt" in cmd and "0:100" in cmd
+
+    def test_internal_normalizers_cover_remaining_validation(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="weight uids must be integers"):
+            weights._normalize_uid("   ")
+        with pytest.raises(ValueError, match="weights cannot be empty"):
+            weights._string_weights_arg("   ")
+        with pytest.raises(ValueError, match=r"JSON weights must be an object map or array of \{uid, weight\} entries"):
+            weights._weights_from_json_string("123")
+        with pytest.raises(ValueError, match="salt cannot be empty"):
+            weights._salt_arg(b"")
+        with pytest.raises(ValueError, match="salt must be a string or bytes"):
+            weights._salt_arg(123)  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="hash must be a hex string or 32-byte value"):
+            weights._hash_arg(123)  # type: ignore[arg-type]
+
+    def test_weights_vectors_rejects_non_numeric_csv_after_normalization(
+        self, weights: Weights, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(Weights, "_weights_arg", classmethod(lambda cls, payload: "0:not-a-number"))
+        with pytest.raises(ValueError, match="weight values must be numbers"):
+            weights._weights_vectors("0:100")
+
+    def test_load_commit_reveal_state_help_rejects_non_integer_netuid_type(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        path.write_text(
+            json.dumps({"netuid": "1", "normalized_weights": "0:100", "normalized_salt": "abc"}),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="commit-reveal state netuid must be an integer"):
+            weights.load_commit_reveal_state_help(path)
+
+    def test_load_commit_reveal_state_help_rejects_non_weights_compatible_payload(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        path.write_text(
+            json.dumps({"netuid": 1, "normalized_weights": 123, "normalized_salt": "abc"}),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="commit-reveal state normalized_weights must be weights-compatible"):
+            weights.load_commit_reveal_state_help(path)
+
+    def test_load_commit_reveal_state_help_rejects_invalid_saved_salt_type(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        path.write_text(
+            json.dumps({"netuid": 1, "normalized_weights": "0:100", "normalized_salt": 123}),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="commit-reveal state normalized_salt must be a string or bytes"):
+            weights.load_commit_reveal_state_help(path)
+
+    def test_load_commit_reveal_state_help_rejects_non_integer_saved_version_key(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        path.write_text(
+            json.dumps({"netuid": 1, "normalized_weights": "0:100", "normalized_salt": "abc", "version_key": "7"}),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="commit-reveal state version_key must be an integer"):
+            weights.load_commit_reveal_state_help(path)
+
+    def test_commit_status_from_text_extracts_commit_and_reveal_windows(self, weights: Weights) -> None:
+        entry = weights._commit_status_from_text(
+            1,
+            "READY TO REVEAL (5 blocks remaining)\nCommit: block 100\nReveal: blocks 120..130",
+            hash_value="0x12",
+        )
+        assert entry == {
+            "index": 1,
+            "status": "READY TO REVEAL (5 blocks remaining)\nCommit: block 100\nReveal: blocks 120..130",
+            "hash": "0x12",
+            "commit_block": 100,
+            "first_reveal": 120,
+            "last_reveal": 130,
+            "blocks_until_action": 5,
+        }
+
+    def test_status_summary_help_supports_pending_commit_count_integer(self, weights: Weights) -> None:
+        summary = weights.status_summary_help(
+            {"block": 50, "commit_reveal_enabled": True, "reveal_period_epochs": 2, "pending_commits": 2}
+        )
+        assert summary["pending_commits"] == 2
+        assert summary["pending_statuses"] == ["UNKNOWN", "UNKNOWN"]
+        assert summary["next_action"] == "WAIT"
+
+    def test_status_summary_help_allows_missing_commits_key(self, weights: Weights) -> None:
+        summary = weights.status_summary_help({"block": 50, "commit_reveal_enabled": False, "reveal_period_epochs": 0})
+        assert summary["pending_commits"] == 0
+        assert summary["next_action"] == "NO_PENDING_COMMITS"
+
+    def test_status_summary_help_rejects_non_boolean_commit_reveal_enabled(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status commit_reveal_enabled must be a boolean"):
+            weights.status_summary_help({"block": 50, "commit_reveal_enabled": "yes", "reveal_period_epochs": 2})
+
+    def test_status_summary_help_rejects_non_mapping_commit_entry(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match=r"status commits\[1\] must be a mapping"):
+            weights.status_summary_help({"block": 50, "commit_reveal_enabled": True, "reveal_period_epochs": 2, "commits": [123]})
+
+    def test_status_summary_help_rejects_non_string_commit_status(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match=r"status commits\[1\]\.status must be a string"):
+            weights.status_summary_help(
+                {"block": 50, "commit_reveal_enabled": True, "reveal_period_epochs": 2, "commits": [{"status": 123}]}
+            )
+
+    def test_status_summary_help_rejects_non_integer_commit_fields(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match=r"status commits\[1\]\.commit_block must be an integer when present"):
+            weights.status_summary_help(
+                {
+                    "block": 50,
+                    "commit_reveal_enabled": True,
+                    "reveal_period_epochs": 2,
+                    "commits": [{"status": "WAITING", "commit_block": "100"}],
+                }
+            )
+
+    def test_status_summary_help_rejects_non_string_commit_hash(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match=r"status commits\[1\]\.hash must be a string when present"):
+            weights.status_summary_help(
+                {
+                    "block": 50,
+                    "commit_reveal_enabled": True,
+                    "reveal_period_epochs": 2,
+                    "commits": [{"status": "WAITING", "hash": 123}],
+                }
+            )
+
+    def test_status_summary_help_rejects_invalid_commits_container_type(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status commits must be a list when present"):
+            weights.status_summary_help(
+                {"block": 50, "commit_reveal_enabled": True, "reveal_period_epochs": 2, "commits": "bad"}
+            )
+
+    def test_next_action_guidance_covers_commit_reveal_fallbacks(self, weights: Weights) -> None:
+        assert weights._next_action_guidance(
+            7,
+            {"next_action": "RECOMMIT", "commit_reveal_enabled": True},
+            "0:100",
+        ) == {
+            "recommended_action": "RECOMMIT",
+            "recommended_command": "agcli weights commit-reveal --netuid 7 --weights 0:100",
+            "reason": "A previous pending commit expired, so fresh weights are required.",
+            "normalized_weights": "0:100",
+        }
+        assert weights._next_action_guidance(
+            7,
+            {"next_action": "RECOMMIT", "commit_reveal_enabled": False},
+            "0:100",
+            version_key=3,
+        ) == {
+            "recommended_action": "RECOMMIT",
+            "recommended_command": "agcli weights set --netuid 7 --weights 0:100 --version-key 3",
+            "reason": "A previous pending commit expired, so fresh weights are required.",
+            "normalized_weights": "0:100",
+        }
+
+    def test_next_action_guidance_rejects_invalid_summary_types(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status summary next_action must be a string"):
+            weights._next_action_guidance(1, {"next_action": 123, "commit_reveal_enabled": True})
+        with pytest.raises(ValueError, match="status summary commit_reveal_enabled must be a boolean"):
+            weights._next_action_guidance(1, {"next_action": "WAIT", "commit_reveal_enabled": "yes"})
+
+    def test_mechanism_guidance_covers_remaining_branches(self, weights: Weights) -> None:
+        reveal_helpers = weights._mechanism_next_action_guidance(
+            7,
+            4,
+            {"next_action": "REVEAL", "commit_reveal_enabled": True},
+        )
+        assert reveal_helpers["reason"] == (
+            "A pending mechanism commit is ready to reveal now; provide the original weights and salt to build the reveal command."
+        )
+
+        recommit_helpers = weights._mechanism_next_action_guidance(
+            7,
+            4,
+            {"next_action": "RECOMMIT", "commit_reveal_enabled": True},
+        )
+        assert recommit_helpers["reason"] == (
+            "A previous pending mechanism commit expired, so a fresh precomputed mechanism hash is required before retrying."
+        )
+
+        recommit_with_hash = weights._mechanism_next_action_guidance(
+            7,
+            4,
+            {"next_action": "RECOMMIT", "commit_reveal_enabled": True},
+            hash_value="11" * 32,
+        )
+        assert recommit_with_hash["recommended_command"] == (
+            "agcli weights commit-mechanism --netuid 7 --mechanism-id 4 --hash " + "11" * 32
+        )
+        assert recommit_with_hash["reason"] == (
+            "A previous pending mechanism commit expired, so a fresh mechanism commit is required."
+        )
+
+        direct_recommit = weights._mechanism_next_action_guidance(
+            7,
+            4,
+            {"next_action": "RECOMMIT", "commit_reveal_enabled": False},
+            "0:100",
+            version_key=2,
+        )
+        assert direct_recommit["recommended_command"] == (
+            "agcli weights set-mechanism --netuid 7 --mechanism-id 4 --weights 0:100 --version-key 2"
+        )
+        assert direct_recommit["reason"] == (
+            "The previous mechanism commit expired and direct mechanism weight setting is available."
+        )
+
+        direct_no_pending = weights._mechanism_next_action_guidance(
+            7,
+            4,
+            {"next_action": "NO_PENDING_COMMITS", "commit_reveal_enabled": False},
+            "0:100",
+            version_key=2,
+        )
+        assert direct_no_pending["recommended_command"] == (
+            "agcli weights set-mechanism --netuid 7 --mechanism-id 4 --weights 0:100 --version-key 2"
+        )
+        assert direct_no_pending["reason"] == (
+            "No mechanism commit is pending and direct mechanism weight setting is available."
+        )
+
+        wait_helpers = weights._mechanism_next_action_guidance(
+            7,
+            4,
+            {"next_action": "WAIT", "commit_reveal_enabled": True},
+        )
+        assert wait_helpers["reason"] == "A pending mechanism commit exists but the reveal window is not open yet."
+
+    def test_mechanism_guidance_rejects_invalid_summary_types(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status summary next_action must be a string"):
+            weights._mechanism_next_action_guidance(1, 0, {"next_action": 123, "commit_reveal_enabled": True})
+        with pytest.raises(ValueError, match="status summary commit_reveal_enabled must be a boolean"):
+            weights._mechanism_next_action_guidance(1, 0, {"next_action": "WAIT", "commit_reveal_enabled": "yes"})
+
+    def test_timelocked_guidance_covers_remaining_branches(self, weights: Weights) -> None:
+        reveal_helpers = weights._timelocked_next_action_guidance(
+            9,
+            {"next_action": "REVEAL", "commit_reveal_enabled": True},
+        )
+        assert reveal_helpers["reason"] == (
+            "A pending timelocked commit is ready to reveal now; provide the original weights and salt to build the reveal command."
+        )
+
+        direct_recommit = weights._timelocked_next_action_guidance(
+            9,
+            {"next_action": "RECOMMIT", "commit_reveal_enabled": False},
+            "0:100",
+            version_key=5,
+        )
+        assert direct_recommit["recommended_command"] == "agcli weights set --netuid 9 --weights 0:100 --version-key 5"
+        assert direct_recommit["reason"] == "The previous timelocked commit expired and direct weight setting is available."
+
+        recommit_without_inputs = weights._timelocked_next_action_guidance(
+            9,
+            {"next_action": "RECOMMIT", "commit_reveal_enabled": True},
+        )
+        assert recommit_without_inputs["reason"] == (
+            "A previous pending timelocked commit expired, so fresh weights and a drand round are required before retrying."
+        )
+
+        no_pending_commit = weights._timelocked_next_action_guidance(
+            9,
+            {"next_action": "NO_PENDING_COMMITS", "commit_reveal_enabled": True},
+            "0:100",
+            round=42,
+            salt="abc",
+        )
+        assert no_pending_commit["recommended_command"] == (
+            "agcli weights commit-timelocked --netuid 9 --weights 0:100 --round 42 --salt abc"
+        )
+        assert no_pending_commit["reason"] == "No timelocked commit is pending and this subnet uses commit-reveal."
+
+    def test_timelocked_guidance_rejects_invalid_summary_types(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status summary next_action must be a string"):
+            weights._timelocked_next_action_guidance(1, {"next_action": 123, "commit_reveal_enabled": True})
+        with pytest.raises(ValueError, match="status summary commit_reveal_enabled must be a boolean"):
+            weights._timelocked_next_action_guidance(1, {"next_action": "WAIT", "commit_reveal_enabled": "yes"})
+
+    def test_live_status_helpers_reject_non_mapping_status_output(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout="[1, 2, 3]")
+        with pytest.raises(ValueError, match="weights status output must be a mapping"):
+            weights.next_mechanism_action(1, 0)
+        with pytest.raises(ValueError, match="weights status output must be a mapping"):
+            weights.troubleshoot_mechanism(1, 0, "RevealTooEarly")
+        with pytest.raises(ValueError, match="weights status output must be a mapping"):
+            weights.next_timelocked_action(1)
+        with pytest.raises(ValueError, match="weights status output must be a mapping"):
+            weights.troubleshoot_timelocked(1, "RevealTooEarly")
