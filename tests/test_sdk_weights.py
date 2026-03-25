@@ -3565,9 +3565,7 @@ class TestWeights:
         with pytest.raises(ValueError, match="status summary commit_reveal_enabled must be a boolean"):
             weights._timelocked_next_action_guidance(1, {"next_action": "WAIT", "commit_reveal_enabled": "yes"})
 
-    def test_live_status_helpers_reject_non_mapping_status_output(
-        self, weights: Weights, mock_subprocess: Any
-    ) -> None:
+    def test_live_status_helpers_reject_non_mapping_status_output(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout="[1, 2, 3]")
         with pytest.raises(ValueError, match="weights status output must be a mapping"):
             weights.next_mechanism_action(1, 0)
