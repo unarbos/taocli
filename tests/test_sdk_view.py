@@ -191,6 +191,14 @@ class TestView:
         with pytest.raises(ValueError, match="netuid must be greater than 0"):
             view.chain_data_workflow_help(0)
 
+    def test_chain_data_workflow_help_rejects_boolean_netuid(self, view):
+        with pytest.raises(ValueError, match="netuid must be an integer"):
+            view.chain_data_workflow_help(True)
+
+    def test_chain_data_workflow_help_rejects_boolean_uid(self, view):
+        with pytest.raises(ValueError, match="uid must be an integer"):
+            view.chain_data_workflow_help(1, uid=True)
+
     def test_chain_data_workflow_help_rejects_invalid_uid(self, view):
         with pytest.raises(ValueError, match="uid must be greater than or equal to 0"):
             view.chain_data_workflow_help(1, uid=-1)

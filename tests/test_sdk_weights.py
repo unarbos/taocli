@@ -3709,14 +3709,12 @@ class TestWeights:
             "validator_requirements for wallet selector inspection, wallet inventory plus selected "
             "coldkey/hotkey identity confirmation, hotkey association recovery, manual address "
             "derivation checks, signature generation, signature verification, coldkey funding, "
-            "validator readiness"
-            in helpers["adjacent_workflows_note"]
+            "validator readiness" in helpers["adjacent_workflows_note"]
         )
         assert (
             "inspect_wallet_show_command, inspect_wallet_current_command, inspect_wallet_associate_command, "
             "inspect_wallet_derive_command, inspect_wallet_sign_command, inspect_wallet_verify_command, "
-            "inspect_balance_command"
-            in helpers["adjacent_recovery_note"]
+            "inspect_balance_command" in helpers["adjacent_recovery_note"]
         )
         assert (
             "inspect_config_show_command, inspect_wallet_show_command, inspect_wallet_current_command, "
@@ -6266,3 +6264,341 @@ class TestWeights:
             weights.next_timelocked_action(1)
         with pytest.raises(ValueError, match="weights status output must be a mapping"):
             weights.troubleshoot_timelocked(1, "RevealTooEarly")
+
+    def test_validated_weights_arg_rejects_non_numeric_value_after_normalization(self, weights: Weights) -> None:
+        from unittest.mock import patch
+
+        with (
+            patch.object(Weights, "_weights_arg", return_value="0:abc"),
+            pytest.raises(ValueError, match="weight values must be numbers"),
+        ):
+            weights._validated_weights_arg("0:abc")
+
+    def test_weights_not_settable_recovery_fields(self, weights: Weights) -> None:
+        fields = weights._weights_not_settable_recovery_fields(3)
+        assert "inspect_status_command" in fields
+        assert "inspect_subnet_rules_command" in fields
+        assert "weights_not_settable_recovery_note" in fields
+
+    def test_commit_reveal_disabled_recovery_fields(self, weights: Weights) -> None:
+        fields = weights._commit_reveal_disabled_recovery_fields(3)
+        assert "inspect_status_command" in fields
+        assert "inspect_subnet_rules_command" in fields
+        assert "commit_reveal_disabled_recovery_note" in fields
+
+    def test_commit_reveal_required_recovery_fields(self, weights: Weights) -> None:
+        fields = weights._commit_reveal_required_recovery_fields(3)
+        assert "inspect_status_command" in fields
+        assert "inspect_subnet_rules_command" in fields
+        assert "commit_reveal_required_recovery_note" in fields
+
+    def test_direct_set_recovery_fields_weights_not_settable(self, weights: Weights) -> None:
+        fields = weights._direct_set_recovery_fields(3, "WeightsNotSettable")
+        assert "weights_not_settable_recovery_note" in fields
+
+    def test_direct_set_recovery_fields_commit_reveal_disabled(self, weights: Weights) -> None:
+        fields = weights._direct_set_recovery_fields(3, "CommitRevealDisabled")
+        assert "commit_reveal_disabled_recovery_note" in fields
+
+    def test_direct_set_recovery_fields_commit_reveal_required(self, weights: Weights) -> None:
+        fields = weights._direct_set_recovery_fields(3, "CommitRevealEnabled")
+        assert "commit_reveal_required_recovery_note" in fields
+
+    def test_payload_shape_recovery_fields(self, weights: Weights) -> None:
+        fields = weights._payload_shape_recovery_fields(3)
+        assert "inspect_metagraph_command" in fields
+        assert "inspect_subnet_rules_command" in fields
+        assert "payload_shape_recovery_note" in fields
+
+    def test_subnet_missing_recovery_fields(self, weights: Weights) -> None:
+        fields = weights._subnet_missing_recovery_fields()
+        assert "inspect_subnets_command" in fields
+        assert "subnet_missing_recovery_note" in fields
+
+    def test_payload_recovery_fields_shape_errors(self, weights: Weights) -> None:
+        fields = weights._payload_recovery_fields(3, "WeightVecNotEqualSize")
+        assert "payload_shape_recovery_note" in fields
+
+    def test_troubleshoot_recovery_fields_subnet_missing(self, weights: Weights) -> None:
+        fields = weights._troubleshoot_recovery_fields(3, "SubnetworkDoesNotExist")
+        assert "subnet_missing_recovery_note" in fields
+
+    def test_saved_state_recovery_fields_no_match(self, weights: Weights) -> None:
+        fields = weights._saved_state_recovery_fields(3, "some unknown error")
+        assert fields == {}
+
+    def test_status_aware_recovery_fields_non_string_next_action(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields("CommitRevealEnabled", {"next_action": 123})
+        assert fields == {}
+
+    def test_status_aware_recovery_fields_non_bool_commit_reveal_enabled(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields(
+            "CommitRevealEnabled", {"next_action": "WAIT", "commit_reveal_enabled": "yes"}
+        )
+        assert fields == {}
+
+    def test_status_aware_recovery_fields_commit_reveal_required_but_disabled(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields(
+            "CommitRevealEnabled",
+            {"next_action": "WAIT", "commit_reveal_enabled": False},
+        )
+        assert fields["status_error_conflict_detected"] is True
+        assert "direct weight setting is available" in fields["status_error_reconciliation_note"]
+
+    def test_status_aware_recovery_fields_commit_reveal_disabled_but_enabled(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields(
+            "CommitRevealDisabled",
+            {"next_action": "WAIT", "commit_reveal_enabled": True},
+        )
+        assert fields["status_error_conflict_detected"] is True
+        assert "commit-reveal is enabled" in fields["status_error_reconciliation_note"]
+
+    def test_status_aware_recovery_fields_pending_commit_with_rate_limit_error(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields(
+            "SettingWeightsTooFast",
+            {
+                "next_action": "WAIT",
+                "commit_reveal_enabled": True,
+                "commit_windows": [
+                    {
+                        "status": "WAITING (10 blocks until reveal window)",
+                        "commit_block": 90,
+                        "first_reveal": 110,
+                        "last_reveal": 120,
+                    }
+                ],
+            },
+        )
+        assert "already_pending_recovery_note" in fields
+
+    def test_saved_state_status_fields_skips_non_mapping_commit_window_entries(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        from unittest.mock import patch
+
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 5, "0:100", "abc")
+
+        crafted_summary = {
+            "current_block": 125,
+            "commit_reveal_enabled": True,
+            "reveal_period_epochs": 3,
+            "pending_commits": 2,
+            "pending_statuses": ["READY TO REVEAL (5 blocks remaining)", "UNKNOWN"],
+            "next_action": "REVEAL",
+            "commit_windows": [
+                "not-a-mapping",
+                {
+                    "status": "READY TO REVEAL (5 blocks remaining)",
+                    "commit_block": 100,
+                    "first_reveal": 120,
+                    "last_reveal": 130,
+                    "blocks_until_action": 5,
+                    "hash": saved["hash"],
+                    "index": 1,
+                },
+            ],
+        }
+        with patch.object(Weights, "_extract_status_summary", return_value=crafted_summary):
+            helpers = weights.troubleshoot_unrevealed_commit_help(path, status={})
+        assert helpers["saved_hash_matches_pending_commit"] is True
+        assert helpers["matching_pending_commits"][0]["hash"] == saved["hash"]
+        assert helpers["matching_pending_commit_indexes"] == [1]
+
+    def test_troubleshoot_unrevealed_commit_help_missing_commit_with_pending_but_no_hash_match(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        weights.save_commit_reveal_state_help(path, 9, "0:100", "abc", version_key=4)
+        status = {
+            "block": 125,
+            "commit_reveal_enabled": True,
+            "reveal_period_epochs": 3,
+            "pending_commits": 1,
+            "commits": [
+                {
+                    "status": "READY TO REVEAL (5 blocks remaining)",
+                    "commit_block": 100,
+                    "first_reveal": 120,
+                    "last_reveal": 130,
+                    "blocks_until_action": 5,
+                    "hash": "0x9999",
+                }
+            ],
+        }
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="NoWeightsCommitFound",
+            status=status,
+        )
+        assert helpers["stale_state_detected"] is True
+        assert helpers["on_chain_drift_note"] == (
+            "The saved commit hash differs from the current pending commit on-chain. Compare the saved state "
+            "record with pending_commit before retrying, or create a fresh commit if they should match."
+        )
+
+    def test_troubleshoot_unrevealed_commit_help_missing_commit_no_saved_hash_no_pending_hash(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        weights.save_commit_reveal_state_help(path, 9, "0:100", "abc", version_key=4)
+        status = {
+            "block": 125,
+            "commit_reveal_enabled": True,
+            "reveal_period_epochs": 3,
+            "pending_commits": 1,
+            "commits": [
+                {
+                    "status": "READY TO REVEAL (5 blocks remaining)",
+                    "commit_block": 100,
+                    "first_reveal": 120,
+                    "last_reveal": 130,
+                    "blocks_until_action": 5,
+                }
+            ],
+        }
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="NoWeightsCommitFound",
+            status=status,
+        )
+        assert helpers["stale_state_detected"] is True
+        assert helpers["on_chain_drift_note"] == (
+            "A pending commit still exists on-chain, but the saved state did not match it. Compare the saved "
+            "hash, weights, salt, and version_key against pending_commit before retrying."
+        )
+        assert helpers["next_step"] == (
+            "Compare the saved weights, salt, version_key, and hash with pending_commit before retrying the "
+            "saved reveal_command."
+        )
+
+    def test_troubleshoot_unrevealed_commit_help_hash_mismatch_no_pending_commits(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        weights.save_commit_reveal_state_help(path, 9, "0:100", "abc", version_key=4)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="InvalidRevealCommitHashNotMatch",
+            status=NO_PENDING_STATUS_TEXT,
+        )
+        assert helpers["stale_state_detected"] is True
+        assert helpers["on_chain_drift_note"] == (
+            "No pending commit is visible on-chain, so the saved reveal inputs likely belong to an expired, "
+            "already-revealed, or replaced commit."
+        )
+        assert helpers["next_step"] == (
+            "Refresh weights status to confirm there is still no pending commit, then create a fresh commit "
+            "and save its reveal state before retrying."
+        )
+
+    def test_troubleshoot_unrevealed_commit_help_hash_mismatch_pending_but_no_hash(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        weights.save_commit_reveal_state_help(path, 9, "0:100", "abc", version_key=4)
+        status = {
+            "block": 125,
+            "commit_reveal_enabled": True,
+            "reveal_period_epochs": 3,
+            "pending_commits": 1,
+            "commits": [
+                {
+                    "status": "READY TO REVEAL (5 blocks remaining)",
+                    "commit_block": 100,
+                    "first_reveal": 120,
+                    "last_reveal": 130,
+                    "blocks_until_action": 5,
+                }
+            ],
+        }
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="InvalidRevealCommitHashNotMatch",
+            status=status,
+        )
+        assert helpers["on_chain_drift_note"] == (
+            "A pending commit still exists on-chain, so compare the saved weights, salt, and version_key with "
+            "pending_commit before retrying the saved reveal_command."
+        )
+        assert helpers["next_step"] == (
+            "Compare the saved weights, salt, version_key, and hash with pending_commit before retrying the "
+            "saved reveal_command."
+        )
+
+    def test_pending_commit_action_non_string_status(self, weights: Weights) -> None:
+        result = weights._pending_commit_action({"status": 123})
+        assert result is None
+
+    def test_pending_commit_action_empty_string_status(self, weights: Weights) -> None:
+        result = weights._pending_commit_action({"status": ""})
+        assert result is None
+
+    def test_pending_commit_window_non_string_next_action(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status summary next_action must be a string"):
+            weights._pending_commit_window({"next_action": 123})
+
+    def test_pending_commit_window_skips_non_mapping_entries(self, weights: Weights) -> None:
+        result = weights._pending_commit_window(
+            {
+                "next_action": "REVEAL",
+                "commit_windows": ["not-a-mapping", {"status": "READY TO REVEAL (5 blocks remaining)"}],
+            }
+        )
+        assert result is not None
+        assert result["status"] == "READY TO REVEAL (5 blocks remaining)"
+
+    def test_pending_commit_window_single_element_fallback(self, weights: Weights) -> None:
+        result = weights._pending_commit_window(
+            {
+                "next_action": "COMMIT",
+                "commit_windows": [{"status": "something else", "hash": "0xabc"}],
+            }
+        )
+        assert result is not None
+        assert result["hash"] == "0xabc"
+
+    def test_mechanism_guidance_wait_with_blocks_until_action(self, weights: Weights) -> None:
+        helpers = weights._mechanism_next_action_guidance(
+            7,
+            4,
+            {
+                "next_action": "WAIT",
+                "commit_reveal_enabled": True,
+                "commit_windows": [
+                    {
+                        "status": "WAITING (10 blocks until reveal window)",
+                        "commit_block": 90,
+                        "first_reveal": 110,
+                        "last_reveal": 120,
+                        "blocks_until_action": 10,
+                    }
+                ],
+            },
+        )
+        assert helpers["timing_note"] == "Wait about 10 more blocks, then check status again."
+
+    def test_uid_arg_rejects_boolean(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="uid must be an integer"):
+            weights._uid_arg(True)
+
+    def test_uid_arg_rejects_negative(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="uid must be greater than or equal to 0"):
+            weights._uid_arg(-1)
+
+    def test_live_status_input_falls_back_to_text_on_json_decode_error(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        call_count = 0
+
+        def side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return make_completed_process(stdout="not valid json {{{")
+            return make_completed_process(stdout=READY_STATUS_TEXT)
+
+        mock_subprocess.side_effect = side_effect
+        result = weights._live_status_input(1)
+        assert isinstance(result, str)
+        assert "READY TO REVEAL" in result

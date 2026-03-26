@@ -659,6 +659,10 @@ class TestSubnet:
         with pytest.raises(ValueError, match="netuid must be greater than 0"):
             subnet.registration_workflow_help(0)
 
+    def test_registration_workflow_help_rejects_boolean_netuid(self, subnet):
+        with pytest.raises(ValueError, match="netuid must be an integer"):
+            subnet.registration_workflow_help(True)
+
     def test_registration_workflow_help_rejects_empty_wallet(self, subnet):
         with pytest.raises(ValueError, match="wallet cannot be empty"):
             subnet.registration_workflow_help(1, wallet="   ")

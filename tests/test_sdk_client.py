@@ -812,8 +812,7 @@ class TestClientMethods:
         assert "watch plus monitor" in helpers["adjacent_workflows_note"]
         assert (
             "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-            "wallet_sign plus wallet_verify plus balance"
-            in helpers["adjacent_workflows_note"]
+            "wallet_sign plus wallet_verify plus balance" in helpers["adjacent_workflows_note"]
         )
         assert "manual address derivation checks" in helpers["adjacent_workflows_note"]
         assert "signature generation" in helpers["adjacent_workflows_note"]

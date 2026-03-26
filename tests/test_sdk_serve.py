@@ -212,8 +212,7 @@ class TestServe:
         )
         assert helpers["serve_prometheus"] == "agcli serve prometheus --netuid 8 --ip 127.0.0.1 --port 9090 --version 7"
         assert (
-            helpers["serve_axon_tls"]
-            == "agcli serve axon-tls --netuid 8 --ip 127.0.0.1 --port 8080 "
+            helpers["serve_axon_tls"] == "agcli serve axon-tls --netuid 8 --ip 127.0.0.1 --port 8080 "
             "--cert /tmp/cert.pem --protocol 4 --version 7"
         )
 
@@ -302,8 +301,7 @@ class TestServe:
     def test_axon_workflow_help_serve_prereq_note_uses_hostname(self, serve):
         helpers = serve.axon_workflow_help(8, "example.com", 8080)
         assert (
-            helpers["serve_prereq_note"]
-            == "After serving SN8 example.com:8080, verify the endpoint and any validator "
+            helpers["serve_prereq_note"] == "After serving SN8 example.com:8080, verify the endpoint and any validator "
             "workflow assumptions before advertising it to operators."
         )
 
@@ -437,6 +435,44 @@ class TestServe:
     def test_axon_workflow_help_rejects_negative_version(self, serve):
         with pytest.raises(ValueError, match="version must be greater than or equal to 0"):
             serve.axon_workflow_help(1, "0.0.0.0", 8080, version=-1)
+
+    def test_axon_workflow_help_rejects_boolean_netuid(self, serve):
+        with pytest.raises(ValueError, match="netuid must be an integer"):
+            serve.axon_workflow_help(True, "0.0.0.0", 8080)
+
+    def test_axon_workflow_help_rejects_boolean_port(self, serve):
+        with pytest.raises(ValueError, match="port must be an integer"):
+            serve.axon_workflow_help(1, "0.0.0.0", True)
+
+    def test_serve_prefix_fields_returns_copy(self, serve):
+        context = {"wallet": "cold", "extra": 42}
+        fields = Serve._serve_prefix_fields(context)
+        assert fields == context
+        assert fields is not context
+
+    def test_versioned_prometheus_command_without_version(self, serve):
+        result = Serve._versioned_prometheus_command("agcli serve prometheus --netuid 1", None)
+        assert result == "agcli serve prometheus --netuid 1"
+
+    def test_versioned_prometheus_command_with_version(self, serve):
+        result = Serve._versioned_prometheus_command("agcli serve prometheus --netuid 1", 3)
+        assert result == "agcli serve prometheus --netuid 1 --version 3"
+
+    def test_versioned_tls_command_without_version(self, serve):
+        result = Serve._versioned_tls_command("agcli serve axon-tls --netuid 1", None)
+        assert result == "agcli serve axon-tls --netuid 1"
+
+    def test_versioned_tls_command_with_version(self, serve):
+        result = Serve._versioned_tls_command("agcli serve axon-tls --netuid 1", 5)
+        assert result == "agcli serve axon-tls --netuid 1 --version 5"
+
+    def test_protocolized_tls_command_without_protocol(self, serve):
+        result = Serve._protocolized_tls_command("agcli serve axon-tls --netuid 1", None)
+        assert result == "agcli serve axon-tls --netuid 1"
+
+    def test_protocolized_tls_command_with_protocol(self, serve):
+        result = Serve._protocolized_tls_command("agcli serve axon-tls --netuid 1", 4)
+        assert result == "agcli serve axon-tls --netuid 1 --protocol 4"
 
     def test_axon_workflow_help_accepts_hostname(self, serve):
         helpers = serve.axon_workflow_help(1, "validator-1.local", 8080)

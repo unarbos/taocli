@@ -301,6 +301,10 @@ class TestAdmin:
         assert helpers["value"] == "0.5"
         assert helpers["set"] == "agcli admin set-adjustment-alpha --netuid 9 --alpha 0.5"
 
+    def test_hyperparameter_workflow_help_rejects_boolean_netuid(self, admin):
+        with pytest.raises(ValueError, match="netuid must be an integer"):
+            admin.hyperparameter_workflow_help(True)
+
     def test_hyperparameter_workflow_help_stringifies_bool_value(self, admin):
         helpers = admin.hyperparameter_workflow_help(
             9, command="set-network-registration", value_flag="--allowed", value=False
