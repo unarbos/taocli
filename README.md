@@ -92,16 +92,116 @@ print(workflow["commit_reveal"])
 print(workflow["reveal"])
 print(c.weights.troubleshoot_help(1, "IncorrectCommitRevealVersion", {0: 100, 1: 200}, salt="round-42", version_key=7))
 
+# Operator-priority workflow helpers
+print(c.view.chain_data_workflow_help(1, uid=0))
+print(c.subnet.registration_workflow_help(1, wallet="cold", hotkey="miner"))
+print(c.serve.axon_workflow_help(1, "0.0.0.0", 8091, version=1, prometheus_port=9090))
+print(c.subnet.hyperparameters_workflow_help(1, param="tempo", value="360"))
+print(c.admin.hyperparameter_workflow_help(1, command="set-tempo", value_flag="--tempo", value=360))
+print(c.admin.hyperparameter_mutation_help("set-tempo", 1, value_flag="--tempo", value=360))
+
 # View
 c.view.portfolio()
 c.view.network()
 ```
 
-`c.weights` accepts the native agcli CSV form (`"0:100,1:200"`) plus agent-friendlier mappings, `(uid, weight)` pairs, JSON strings, `-` for stdin, and `@file.json` inputs. Use `workflow_help(...)` when you want copy-pasteable `set`, `commit-reveal`, `commit`, `reveal`, and `status` commands for an operator runbook or agent handoff. For atomic commit-reveal flows, prefer `commit_reveal_runbook_help(...)` or `create_commit_reveal_state_help(...)` first so the original weights, salt, derived hash, and reusable reveal command can be saved and reused if the reveal step stalls.
+`c.weights` accepts the native agcli CSV form (`"0:100,1:200"`) plus agent-friendlier mappings, `(uid, weight)` pairs, JSON strings, `-` for stdin, and `@file.json` inputs. Use `workflow_help(...)` when you want copy-pasteable `set`, `commit-reveal`, `commit`, `reveal`, `status`, and adjacent follow-up commands (`inspect_metagraph_command`, `inspect_chain_data_command`, `inspect_hyperparams_command`, `inspect_emissions_command`, `inspect_owner_param_list_command`, `inspect_admin_list_command`, `inspect_health_command`, `inspect_axon_command`) for an operator runbook or agent handoff. For atomic commit-reveal flows, prefer `commit_reveal_runbook_help(...)` or `create_commit_reveal_state_help(...)` first so the original weights, salt, derived hash, and reusable reveal command can be saved and reused if the reveal step stalls.
 
-`save_commit_reveal_state_help(...)`, `load_commit_reveal_state_help(...)`, `recover_reveal_from_state_help(...)`, and `troubleshoot_unrevealed_commit_help(...)` are the recovery path: persist a JSON state record before or during commit, then reload it later to reveal the exact same commit manually instead of losing the original reveal inputs.
+`troubleshoot_help(...)` now also carries those adjacent pivots so operators can move from a weights error into metagraph/emissions inspection, hyperparameter read/write discovery, subnet summary, registration readiness, or serve verification without reconstructing discovery commands manually.
+
+
+`save_commit_reveal_state_help(...)`, `load_commit_reveal_state_help(...)`, `recover_reveal_from_state_help(...)`, and `troubleshoot_unrevealed_commit_help(...)` are the recovery path: persist a JSON state record before or during commit, then reload it later to reveal the exact same commit manually instead of losing the original reveal inputs. Those saved-state helpers also keep the adjacent metagraph/hyperparameter/subnet/serve pivots (`inspect_metagraph_command`, `inspect_chain_data_command`, `inspect_hyperparams_command`, `inspect_emissions_command`, `inspect_owner_param_list_command`, `inspect_admin_list_command`, `inspect_registration_cost_command`, `inspect_health_command`, `inspect_axon_command`) on the recovery record so operators can jump out of a stuck reveal without rediscovering the follow-up commands.
 
 `operator_note_for_atomic_commit_reveal_help(...)` wraps that runbook in operator-facing guidance for handoff situations where another person or agent may need to finish the reveal later.
+
+## Operator-priority workflow quick reference
+
+```python
+from taocli import Client
+
+c = Client(network="finney")
+
+# 1) Metagraph / miner endpoints / chain state
+chain = c.view.chain_data_workflow_help(1, uid=0)
+print(chain["metagraph"])
+print(chain["neurons"])
+print(chain["miner_endpoints"])
+print(chain["commits"])
+print(chain["hyperparams"])
+
+# 2) Register on a subnet
+register = c.subnet.registration_workflow_help(1, wallet="cold", hotkey="miner", threads=8)
+print(register["registration_cost"])
+print(register["register_neuron"])
+print(register["pow_register"])
+
+# 3) Serve an axon
+serve = c.serve.axon_workflow_help(1, "0.0.0.0", 8091, version=1, prometheus_port=9090)
+print(serve["serve_axon"])
+print(serve["status_check"])
+
+# 4) Set weights
+weights = c.weights.operator_workflow_help(
+    1,
+    {0: 100, 1: 200},
+    salt="round-42",
+    version_key=7,
+    wait=True,
+    wallet="cold",
+    hotkey="validator",
+)
+print(weights["status"])
+print(weights["show"])
+print(weights["hyperparams"])
+print(weights["inspect_metagraph_command"])
+print(weights["inspect_chain_data_command"])
+print(weights["inspect_hyperparams_command"])
+print(weights["inspect_emissions_command"])
+print(weights["inspect_owner_param_list_command"])
+print(weights["inspect_admin_list_command"])
+print(weights["inspect_axon_command"])
+print(weights["set"])
+print(weights["commit_reveal"])
+
+# Saved-state recovery if reveal stalls later
+state = c.weights.commit_reveal_runbook_help(
+    1,
+    {0: 100, 1: 200},
+    salt="round-42",
+    version_key=7,
+    state_path="weights-state.json",
+)
+print(state["reveal_command"])
+recovery = c.weights.troubleshoot_unrevealed_commit_help(
+    "weights-state.json",
+    status={"block": 125, "commit_reveal_enabled": True, "reveal_period_epochs": 3, "commits": []},
+)
+print(recovery["inspect_metagraph_command"])
+print(recovery["inspect_hyperparams_command"])
+print(recovery["inspect_emissions_command"])
+print(recovery["inspect_owner_param_list_command"])
+print(recovery["inspect_admin_list_command"])
+print(recovery["inspect_health_command"])
+print(recovery["inspect_axon_command"])
+print(recovery["adjacent_recovery_note"])
+
+# 5) Get hyperparameters
+hparams = c.subnet.hyperparameters_workflow_help(1)
+print(hparams["get"])
+print(hparams["owner_param_list"])
+
+# 6) Set hyperparameters
+proposal = c.subnet.hyperparameters_workflow_help(1, param="tempo", value="360")
+print(proposal["owner_param_list"])
+print(proposal["set"])
+admin = c.admin.hyperparameter_workflow_help(1, command="set-tempo", value_flag="--tempo", value=360)
+print(admin["owner_param_list"])
+print(admin["admin_list"])
+print(admin["set"])
+print(c.admin.hyperparameter_mutation_help("set-tempo", 1, value_flag="--tempo", value=360))
+```
+
+These helpers are the intended discovery surface for the high-value workflows above: they return normalized, copy-pasteable commands for operators and agents without requiring them to rediscover flags manually.
 
 ## Weights SDK quick reference
 
@@ -176,6 +276,7 @@ Common troubleshooting shortcuts:
 - `RevealTooEarly` / `ExpiredWeightCommit`: the commit-reveal timing window is wrong; check `c.weights.status(netuid)` or `c.weights.workflow_help(...)` first and retry in the correct window.
 - `troubleshoot_help(...)` turns a common runtime error plus optional weights inputs into a compact runbook with likely cause, next step, and normalized retry commands.
 - `workflow_help(...)` is the fastest way to hand an operator or another agent a normalized `status`, `set`, `commit-reveal`, `commit`, and `reveal` runbook for the same weights payload.
+- `commit_reveal_runbook_help(...)` / `create_commit_reveal_state_help(...)` now also carry explicit preflight commands (`inspect_status_command`, `inspect_pending_commits_command`, `inspect_version_key_command`) plus notes for reconciling saved reveal state against wallet-specific status before retrying.
 
 ## SDK Modules
 

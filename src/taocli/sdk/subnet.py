@@ -10,6 +10,160 @@ from taocli.sdk.base import SdkModule
 class Subnet(SdkModule):
     """Subnet operations — list, show, metagraph, register, health, etc."""
 
+    _WALLET_SELECTION_NOTE = (
+        "These commands use agcli's global wallet selectors before the subcommand: "
+        "--wallet chooses the coldkey and --hotkey-name chooses the hotkey file name."
+    )
+
+    @staticmethod
+    def _netuid_arg(netuid: int) -> str:
+        """Normalize a subnet identifier for workflow helpers."""
+        if isinstance(netuid, bool):
+            raise ValueError("netuid must be an integer")
+        normalized = int(netuid)
+        if normalized <= 0:
+            raise ValueError("netuid must be greater than 0")
+        return str(normalized)
+
+    @staticmethod
+    def _optional_text(name: str, value: str | None) -> str | None:
+        """Normalize optional text arguments used in workflow helpers."""
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError(f"{name} cannot be empty")
+        return normalized
+
+    @classmethod
+    def _registration_prefix(
+        cls, *, wallet: str | None = None, hotkey: str | None = None
+    ) -> tuple[str, dict[str, Any]]:
+        """Build a workflow command prefix for registration helpers."""
+        prefix = "agcli"
+        context: dict[str, Any] = {}
+        wallet_arg = cls._optional_text("wallet", wallet)
+        hotkey_arg = cls._optional_text("hotkey", hotkey)
+        if wallet_arg is not None:
+            prefix = f"{prefix} --wallet {wallet_arg}"
+            context["wallet"] = wallet_arg
+        if hotkey_arg is not None:
+            prefix = f"{prefix} --hotkey-name {hotkey_arg}"
+            context["hotkey"] = hotkey_arg
+        if wallet_arg is not None or hotkey_arg is not None:
+            context["wallet_selection_note"] = cls._WALLET_SELECTION_NOTE
+        return prefix, context
+
+    @classmethod
+    def _wallet_prefix(cls, *, wallet: str | None = None) -> tuple[str, dict[str, Any]]:
+        """Build a workflow command prefix for coldkey-signed subnet owner helpers."""
+        prefix = "agcli"
+        context: dict[str, Any] = {}
+        wallet_arg = cls._optional_text("wallet", wallet)
+        if wallet_arg is not None:
+            prefix = f"{prefix} --wallet {wallet_arg}"
+            context["wallet"] = wallet_arg
+            context["wallet_selection_note"] = cls._WALLET_SELECTION_NOTE
+        return prefix, context
+
+    @staticmethod
+    def _hyperparameter_mutation_note() -> str:
+        """Return guidance for owner-vs-admin hyperparameter changes."""
+        return (
+            "Use subnet set-param for subnet-owner parameters. For root-only knobs on localnet, "
+            "inspect agcli admin list and run the matching agcli admin set-* command with --sudo-key."
+        )
+
+    @staticmethod
+    def _param_list_command(netuid_arg: str, prefix: str) -> str:
+        """Return the discovery command for listable subnet parameters."""
+        return f"{prefix} subnet set-param --netuid {netuid_arg} --param list"
+
+    @classmethod
+    def registration_workflow_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        threads: int | None = None,
+        max_cost: float | None = None,
+        max_attempts: int | None = None,
+    ) -> dict[str, Any]:
+        """Return a compact runbook for subnet registration workflows."""
+        netuid_arg = cls._netuid_arg(netuid)
+        prefix, context = cls._registration_prefix(wallet=wallet, hotkey=hotkey)
+        register_neuron = f"{prefix} subnet register-neuron --netuid {netuid_arg}"
+        pow_cmd = f"{prefix} subnet pow --netuid {netuid_arg}"
+        snipe_cmd = f"{prefix} subnet snipe --netuid {netuid_arg}"
+        commands: dict[str, Any] = {
+            "netuid": int(netuid_arg),
+            "subnet": f"agcli subnet show --netuid {netuid_arg}",
+            "hyperparams": f"agcli subnet hyperparams --netuid {netuid_arg}",
+            "registration_cost": f"agcli subnet cost --netuid {netuid_arg}",
+            "health": f"agcli subnet health --netuid {netuid_arg}",
+            "register_neuron": register_neuron,
+            "pow_register": pow_cmd,
+            "snipe_register": snipe_cmd,
+        }
+        commands.update(context)
+        if threads is not None:
+            pow_cmd = f"{pow_cmd} --threads {int(threads)}"
+            commands["threads"] = int(threads)
+        if max_cost is not None:
+            snipe_cmd = f"{snipe_cmd} --max-cost {max_cost}"
+            commands["max_cost"] = max_cost
+        if max_attempts is not None:
+            snipe_cmd = f"{snipe_cmd} --max-attempts {int(max_attempts)}"
+            commands["max_attempts"] = int(max_attempts)
+        commands["register_neuron"] = register_neuron
+        commands["pow_register"] = pow_cmd
+        commands["snipe_register"] = snipe_cmd
+        return commands
+
+    @classmethod
+    def hyperparameter_workflow_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+    ) -> dict[str, Any]:
+        """Return a compact runbook for reading and updating subnet hyperparameters."""
+        netuid_arg = cls._netuid_arg(netuid)
+        prefix, context = cls._wallet_prefix(wallet=wallet)
+        list_cmd = cls._param_list_command(netuid_arg, prefix)
+        commands: dict[str, Any] = {
+            "netuid": int(netuid_arg),
+            "show": f"agcli subnet show --netuid {netuid_arg}",
+            "get": f"agcli subnet hyperparams --netuid {netuid_arg}",
+            "param_list": list_cmd,
+            "owner_param_list": list_cmd,
+            "set": f"{prefix} subnet set-param --netuid {netuid_arg}",
+            "admin_list": "agcli admin list",
+            "mutation_note": cls._hyperparameter_mutation_note(),
+        }
+        commands.update(context)
+        param_arg = cls._optional_text("param", param)
+        value_arg = cls._optional_text("value", value)
+        if param_arg is not None:
+            commands["param"] = param_arg
+            commands["set"] = f"{prefix} subnet set-param --netuid {netuid_arg} --param {param_arg}"
+            if value_arg is not None:
+                commands["set"] = (
+                    f"{prefix} subnet set-param --netuid {netuid_arg} --param {param_arg} --value {value_arg}"
+                )
+                commands["value"] = value_arg
+        return commands
+
+    @classmethod
+    def hyperparameters_workflow_help(
+        cls, netuid: int, *, wallet: str | None = None, param: str | None = None, value: str | None = None
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for hyperparameter_workflow_help."""
+        return cls.hyperparameter_workflow_help(netuid, wallet=wallet, param=param, value=value)
+
     def list(self, at_block: int | None = None) -> Any:
         """List all subnets on the network."""
         args = ["subnet", "list"]

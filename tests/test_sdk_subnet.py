@@ -213,3 +213,452 @@ class TestSubnet:
         subnet.monitor(1)
         cmd = mock_subprocess.call_args[0][0]
         assert "monitor" in cmd
+
+    def test_registration_workflow_help(self, subnet):
+        helpers = subnet.registration_workflow_help(11)
+        assert helpers == {
+            "netuid": 11,
+            "subnet": "agcli subnet show --netuid 11",
+            "hyperparams": "agcli subnet hyperparams --netuid 11",
+            "registration_cost": "agcli subnet cost --netuid 11",
+            "health": "agcli subnet health --netuid 11",
+            "register_neuron": "agcli subnet register-neuron --netuid 11",
+            "pow_register": "agcli subnet pow --netuid 11",
+            "snipe_register": "agcli subnet snipe --netuid 11",
+        }
+
+    def test_registration_workflow_help_with_options(self, subnet):
+        helpers = subnet.registration_workflow_help(
+            11,
+            wallet="cold",
+            hotkey="miner",
+            threads=8,
+            max_cost=1.5,
+            max_attempts=3,
+        )
+        assert helpers["wallet"] == "cold"
+        assert helpers["hotkey"] == "miner"
+        assert helpers["threads"] == 8
+        assert helpers["max_cost"] == 1.5
+        assert helpers["max_attempts"] == 3
+        assert helpers["wallet_selection_note"]
+        assert (
+            helpers["register_neuron"] == "agcli --wallet cold --hotkey-name miner subnet register-neuron --netuid 11"
+        )
+        assert helpers["pow_register"] == "agcli --wallet cold --hotkey-name miner subnet pow --netuid 11 --threads 8"
+        assert helpers["snipe_register"] == (
+            "agcli --wallet cold --hotkey-name miner subnet snipe --netuid 11 --max-cost 1.5 --max-attempts 3"
+        )
+
+    def test_registration_workflow_help_with_wallet_only(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold")
+        assert helpers["wallet"] == "cold"
+        assert helpers["wallet_selection_note"]
+        assert helpers["register_neuron"] == "agcli --wallet cold subnet register-neuron --netuid 11"
+
+    def test_registration_workflow_help_with_hotkey_only(self, subnet):
+        helpers = subnet.registration_workflow_help(11, hotkey="miner")
+        assert helpers["hotkey"] == "miner"
+        assert helpers["wallet_selection_note"]
+        assert helpers["register_neuron"] == "agcli --hotkey-name miner subnet register-neuron --netuid 11"
+
+    def test_hyperparameter_workflow_help_with_wallet(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet="owner", param="tempo", value="360")
+        assert helpers["wallet"] == "owner"
+        assert helpers["wallet_selection_note"]
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5 --param tempo --value 360"
+        assert helpers["mutation_note"]
+
+    def test_hyperparameter_workflow_help_base_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["owner_param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli subnet set-param --netuid 5"
+
+    def test_hyperparameter_workflow_help_with_wallet_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet="owner")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameters_workflow_help_alias_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner", param="tempo")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameter_workflow_help_with_param_only_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, param="tempo")
+        assert helpers["owner_param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli subnet set-param --netuid 5 --param tempo"
+
+    def test_hyperparameter_workflow_help_ignores_value_without_param_but_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet="owner", value="360")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5"
+        assert "value" not in helpers
+
+    def test_hyperparameters_workflow_help_alias_base_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers["owner_param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["param_list"] == "agcli subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameters_workflow_help_alias_value_uses_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner", param="tempo", value="360")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5 --param tempo --value 360"
+
+    def test_hyperparameter_workflow_help_alias_matches_owner_param_list(self, subnet):
+        alias = subnet.hyperparameter_workflow_help(5, wallet="owner", param="tempo", value="360")
+        plural = subnet.hyperparameters_workflow_help(5, wallet="owner", param="tempo", value="360")
+        assert alias["owner_param_list"] == plural["owner_param_list"]
+        assert alias == plural
+
+    def test_hyperparameter_workflow_help_show_get_and_admin_list_stay_available(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["show"] == "agcli subnet show --netuid 5"
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 5"
+        assert helpers["admin_list"] == "agcli admin list"
+        assert helpers["mutation_note"]
+
+    def test_hyperparameter_workflow_help_with_trimmed_wallet_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet=" owner ")
+        assert helpers["wallet"] == "owner"
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameter_workflow_help_with_param_and_value_keeps_value_field(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, param=" tempo ", value=" 360 ")
+        assert helpers["param"] == "tempo"
+        assert helpers["value"] == "360"
+        assert helpers["owner_param_list"] == "agcli subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameter_workflow_help_rejects_empty_wallet_duplicate(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameter_workflow_help(5, wallet="")
+
+    def test_hyperparameter_workflow_help_keeps_wallet_selection_note_absent_without_wallet(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert "wallet_selection_note" not in helpers
+
+    def test_hyperparameter_workflow_help_keeps_wallet_selection_note_present_with_wallet(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet="owner")
+        assert helpers["wallet_selection_note"]
+
+    def test_hyperparameter_workflow_help_keeps_owner_param_list_exact(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["owner_param_list"] == "agcli subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameters_workflow_help_keeps_owner_param_list_exact(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameter_workflow_help_with_wallet_and_param_only_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet="owner", param="tempo")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5 --param tempo"
+
+    def test_hyperparameter_workflow_help_keeps_netuid(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["netuid"] == 5
+
+    def test_hyperparameter_workflow_help_keeps_show(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["show"] == "agcli subnet show --netuid 5"
+
+    def test_hyperparameter_workflow_help_keeps_get(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 5"
+
+    def test_hyperparameter_workflow_help_keeps_admin_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["admin_list"] == "agcli admin list"
+
+    def test_hyperparameter_workflow_help_with_wallet_and_value_keeps_owner_param_list(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet="owner", param="tempo", value="360")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["value"] == "360"
+
+    def test_hyperparameter_workflow_help_rejects_empty_param_duplicate(self, subnet):
+        with pytest.raises(ValueError, match="param cannot be empty"):
+            subnet.hyperparameter_workflow_help(5, param="")
+
+    def test_hyperparameter_workflow_help_rejects_empty_value_duplicate(self, subnet):
+        with pytest.raises(ValueError, match="value cannot be empty"):
+            subnet.hyperparameter_workflow_help(5, param="tempo", value="")
+
+    def test_hyperparameter_workflow_help_base(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5)
+        assert helpers["param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["mutation_note"]
+        assert helpers["set"] == "agcli subnet set-param --netuid 5"
+        assert "wallet" not in helpers
+        assert "wallet_selection_note" not in helpers
+
+    def test_hyperparameters_workflow_help_alias_with_wallet(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner", param="tempo")
+        assert helpers["wallet"] == "owner"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5 --param tempo"
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameter_workflow_help_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameter_workflow_help(5, wallet="   ")
+
+    def test_hyperparameters_workflow_help_alias_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameters_workflow_help(5, wallet="   ")
+
+    def test_hyperparameter_workflow_help_ignores_value_without_param(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(5, wallet="owner", value="360")
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5"
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert "value" not in helpers
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 5"
+
+    def test_hyperparameter_workflow_help_rejects_empty_param(self, subnet):
+        with pytest.raises(ValueError, match="param cannot be empty"):
+            subnet.hyperparameter_workflow_help(1, param="   ")
+
+    def test_hyperparameter_workflow_help_rejects_empty_value(self, subnet):
+        with pytest.raises(ValueError, match="value cannot be empty"):
+            subnet.hyperparameter_workflow_help(1, param="tempo", value="   ")
+
+    def test_hyperparameter_workflow_help_rejects_invalid_netuid(self, subnet):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            subnet.hyperparameter_workflow_help(0)
+
+    def test_hyperparameters_workflow_help(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers == {
+            "netuid": 5,
+            "show": "agcli subnet show --netuid 5",
+            "get": "agcli subnet hyperparams --netuid 5",
+            "param_list": "agcli subnet set-param --netuid 5 --param list",
+            "owner_param_list": "agcli subnet set-param --netuid 5 --param list",
+            "set": "agcli subnet set-param --netuid 5",
+            "admin_list": "agcli admin list",
+            "mutation_note": (
+                "Use subnet set-param for subnet-owner parameters. For root-only knobs on localnet, "
+                "inspect agcli admin list and run the matching agcli admin set-* command with --sudo-key."
+            ),
+        }
+
+    def test_hyperparameters_workflow_help_with_param_only(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, param="tempo")
+        assert helpers["param"] == "tempo"
+        assert helpers["param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli subnet set-param --netuid 5 --param tempo"
+        assert "value" not in helpers
+
+    def test_hyperparameters_workflow_help_with_set_param(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, param=" tempo ", value=" 360 ")
+        assert helpers["param"] == "tempo"
+        assert helpers["value"] == "360"
+        assert helpers["param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli subnet set-param --netuid 5 --param tempo --value 360"
+
+    def test_hyperparameters_workflow_help_ignores_value_without_param(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, value="360")
+        assert helpers["set"] == "agcli subnet set-param --netuid 5"
+        assert helpers["param_list"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 5"
+
+    def test_hyperparameters_workflow_help_keeps_mutation_note(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, param="tempo")
+        assert helpers["mutation_note"]
+
+    def test_hyperparameters_workflow_help_keeps_admin_list(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers["admin_list"] == "agcli admin list"
+
+    def test_hyperparameters_workflow_help_rejects_invalid_netuid(self, subnet):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            subnet.hyperparameters_workflow_help(0)
+
+    def test_hyperparameters_workflow_help_rejects_empty_param(self, subnet):
+        with pytest.raises(ValueError, match="param cannot be empty"):
+            subnet.hyperparameters_workflow_help(1, param="   ")
+
+    def test_hyperparameters_workflow_help_rejects_empty_value(self, subnet):
+        with pytest.raises(ValueError, match="value cannot be empty"):
+            subnet.hyperparameters_workflow_help(1, param="tempo", value="   ")
+
+    def test_hyperparameters_workflow_help_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameters_workflow_help(5, wallet="")
+
+    def test_hyperparameters_workflow_help_with_wallet_and_value(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner", param="tempo", value="360")
+        assert helpers["wallet"] == "owner"
+        assert helpers["wallet_selection_note"]
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5 --param tempo --value 360"
+
+    def test_hyperparameters_workflow_help_with_wallet_and_no_param(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner")
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5"
+        assert helpers["wallet_selection_note"]
+
+    def test_hyperparameters_workflow_help_with_wallet_param_only(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner", param="tempo")
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5 --param tempo"
+
+    def test_hyperparameters_workflow_help_with_wallet_ignores_value_without_param(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner", value="360")
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5"
+        assert "value" not in helpers
+
+    def test_hyperparameters_workflow_help_keeps_show(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers["show"] == "agcli subnet show --netuid 5"
+
+    def test_hyperparameters_workflow_help_keeps_netuid(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers["netuid"] == 5
+
+    def test_hyperparameters_workflow_help_keeps_get(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 5"
+
+    def test_hyperparameters_workflow_help_keeps_wallet_selection_note_absent_without_wallet(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert "wallet_selection_note" not in helpers
+
+    def test_hyperparameters_workflow_help_keeps_wallet_selection_note_present_with_wallet(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner")
+        assert helpers["wallet_selection_note"]
+
+    def test_hyperparameters_workflow_help_keeps_param_list_with_wallet(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner")
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameters_workflow_help_keeps_param_list_without_wallet(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers["param_list"] == "agcli subnet set-param --netuid 5 --param list"
+
+    def test_hyperparameters_workflow_help_keeps_mutation_note_with_wallet(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner")
+        assert helpers["mutation_note"]
+
+    def test_hyperparameters_workflow_help_keeps_wallet_name(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet="owner")
+        assert helpers["wallet"] == "owner"
+
+    def test_hyperparameters_workflow_help_with_trimmed_wallet(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5, wallet=" owner ")
+        assert helpers["wallet"] == "owner"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 5"
+
+    def test_hyperparameter_workflow_help_alias_matches_hyperparameters(self, subnet):
+        alias = subnet.hyperparameter_workflow_help(5, wallet="owner", param="tempo", value="360")
+        plural = subnet.hyperparameters_workflow_help(5, wallet="owner", param="tempo", value="360")
+        assert alias == plural
+
+    def test_registration_workflow_help_with_trimmed_wallet_and_hotkey(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet=" cold ", hotkey=" miner ")
+        assert helpers["wallet"] == "cold"
+        assert helpers["hotkey"] == "miner"
+        assert helpers["register_neuron"] == (
+            "agcli --wallet cold --hotkey-name miner subnet register-neuron --netuid 11"
+        )
+
+    def test_registration_workflow_help_keeps_wallet_selection_note_absent_without_overrides(self, subnet):
+        helpers = subnet.registration_workflow_help(11)
+        assert "wallet_selection_note" not in helpers
+
+    def test_registration_workflow_help_keeps_wallet_selection_note_present_with_overrides(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold")
+        assert helpers["wallet_selection_note"]
+
+    def test_registration_workflow_help_keeps_snipe_wallet_prefix(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold", hotkey="miner")
+        assert helpers["snipe_register"].startswith("agcli --wallet cold --hotkey-name miner subnet snipe")
+
+    def test_registration_workflow_help_keeps_pow_wallet_prefix(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold", hotkey="miner")
+        assert helpers["pow_register"].startswith("agcli --wallet cold --hotkey-name miner subnet pow")
+
+    def test_registration_workflow_help_keeps_register_wallet_prefix(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold", hotkey="miner")
+        assert helpers["register_neuron"].startswith("agcli --wallet cold --hotkey-name miner subnet register-neuron")
+
+    def test_registration_workflow_help_rejects_empty_hotkey_duplicate(self, subnet):
+        with pytest.raises(ValueError, match="hotkey cannot be empty"):
+            subnet.registration_workflow_help(11, hotkey="")
+
+    def test_registration_workflow_help_rejects_empty_wallet_duplicate(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.registration_workflow_help(11, wallet="")
+
+    def test_registration_workflow_help_keeps_health(self, subnet):
+        helpers = subnet.registration_workflow_help(11)
+        assert helpers["health"] == "agcli subnet health --netuid 11"
+
+    def test_registration_workflow_help_keeps_hyperparams(self, subnet):
+        helpers = subnet.registration_workflow_help(11)
+        assert helpers["hyperparams"] == "agcli subnet hyperparams --netuid 11"
+
+    def test_registration_workflow_help_keeps_cost(self, subnet):
+        helpers = subnet.registration_workflow_help(11)
+        assert helpers["registration_cost"] == "agcli subnet cost --netuid 11"
+
+    def test_registration_workflow_help_keeps_netuid(self, subnet):
+        helpers = subnet.registration_workflow_help(11)
+        assert helpers["netuid"] == 11
+
+    def test_registration_workflow_help_keeps_subnet(self, subnet):
+        helpers = subnet.registration_workflow_help(11)
+        assert helpers["subnet"] == "agcli subnet show --netuid 11"
+
+    def test_registration_workflow_help_keeps_threads(self, subnet):
+        helpers = subnet.registration_workflow_help(11, threads=8)
+        assert helpers["threads"] == 8
+        assert helpers["pow_register"] == "agcli subnet pow --netuid 11 --threads 8"
+
+    def test_registration_workflow_help_keeps_max_cost_and_attempts(self, subnet):
+        helpers = subnet.registration_workflow_help(11, max_cost=1.5, max_attempts=3)
+        assert helpers["max_cost"] == 1.5
+        assert helpers["max_attempts"] == 3
+        assert helpers["snipe_register"] == "agcli subnet snipe --netuid 11 --max-cost 1.5 --max-attempts 3"
+
+    def test_registration_workflow_help_with_wallet_and_threads(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold", threads=8)
+        assert helpers["pow_register"] == "agcli --wallet cold subnet pow --netuid 11 --threads 8"
+
+    def test_registration_workflow_help_with_hotkey_and_threads(self, subnet):
+        helpers = subnet.registration_workflow_help(11, hotkey="miner", threads=8)
+        assert helpers["pow_register"] == "agcli --hotkey-name miner subnet pow --netuid 11 --threads 8"
+
+    def test_registration_workflow_help_with_wallet_and_snipe_options(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold", max_cost=1.5, max_attempts=3)
+        assert helpers["snipe_register"] == (
+            "agcli --wallet cold subnet snipe --netuid 11 --max-cost 1.5 --max-attempts 3"
+        )
+
+    def test_registration_workflow_help_with_hotkey_and_snipe_options(self, subnet):
+        helpers = subnet.registration_workflow_help(11, hotkey="miner", max_cost=1.5, max_attempts=3)
+        assert helpers["snipe_register"] == (
+            "agcli --hotkey-name miner subnet snipe --netuid 11 --max-cost 1.5 --max-attempts 3"
+        )
+
+    def test_registration_workflow_help_with_wallet_and_hotkey_keeps_note(self, subnet):
+        helpers = subnet.registration_workflow_help(11, wallet="cold", hotkey="miner")
+        assert helpers["wallet_selection_note"] == (
+            "These commands use agcli's global wallet selectors before the subcommand: "
+            "--wallet chooses the coldkey and --hotkey-name chooses the hotkey file name."
+        )
+
+    def test_hyperparameters_workflow_help_keeps_mutation_note_exact(self, subnet):
+        helpers = subnet.hyperparameters_workflow_help(5)
+        assert helpers["mutation_note"] == (
+            "Use subnet set-param for subnet-owner parameters. For root-only knobs on localnet, "
+            "inspect agcli admin list and run the matching agcli admin set-* command with --sudo-key."
+        )
+
+    def test_registration_workflow_help_rejects_invalid_netuid(self, subnet):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            subnet.registration_workflow_help(0)
+
+    def test_registration_workflow_help_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.registration_workflow_help(1, wallet="   ")

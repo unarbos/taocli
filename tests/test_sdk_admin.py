@@ -189,3 +189,121 @@ class TestAdmin:
         admin.list()
         cmd = mock_subprocess.call_args[0][0]
         assert "admin" in cmd and "list" in cmd
+
+    def test_hyperparameter_mutation_help(self, admin):
+        command = admin.hyperparameter_mutation_help(
+            "set-tempo",
+            9,
+            value_flag="--tempo",
+            value=360,
+            sudo_key=" //Alice ",
+        )
+        assert command == "agcli admin set-tempo --netuid 9 --tempo 360 --sudo-key //Alice"
+
+    def test_hyperparameter_mutation_help_with_bool(self, admin):
+        command = admin.hyperparameter_mutation_help(
+            "set-commit-reveal",
+            9,
+            value_flag="--enabled",
+            value=True,
+        )
+        assert command == "agcli admin set-commit-reveal --netuid 9 --enabled true"
+
+    def test_hyperparameter_mutation_help_rejects_invalid_netuid(self, admin):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            admin.hyperparameter_mutation_help("set-tempo", 0, value_flag="--tempo", value=1)
+
+    def test_hyperparameter_mutation_help_rejects_empty_command(self, admin):
+        with pytest.raises(ValueError, match="command cannot be empty"):
+            admin.hyperparameter_mutation_help("   ", 1, value_flag="--tempo", value=1)
+
+    def test_hyperparameter_mutation_help_rejects_empty_value_flag(self, admin):
+        with pytest.raises(ValueError, match="value_flag cannot be empty"):
+            admin.hyperparameter_mutation_help("set-tempo", 1, value_flag="   ", value=1)
+
+    def test_hyperparameter_mutation_help_rejects_empty_sudo_key(self, admin):
+        with pytest.raises(ValueError, match="sudo_key cannot be empty"):
+            admin.hyperparameter_mutation_help("set-tempo", 1, value_flag="--tempo", value=1, sudo_key="   ")
+
+    def test_hyperparameter_mutation_help_stringifies_float(self, admin):
+        command = admin.hyperparameter_mutation_help("set-adjustment-alpha", 9, value_flag="--alpha", value=0.5)
+        assert command == "agcli admin set-adjustment-alpha --netuid 9 --alpha 0.5"
+
+    def test_hyperparameter_workflow_help_base(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9)
+        assert helpers == {
+            "netuid": 9,
+            "show": "agcli subnet show --netuid 9",
+            "get": "agcli subnet hyperparams --netuid 9",
+            "owner_param_list": "agcli subnet set-param --netuid 9 --param list",
+            "admin_list": "agcli admin list",
+            "raw": "agcli admin raw --call <sudo-call>",
+            "sudo_note": (
+                "Use admin list to discover the exact set-* command for root-only knobs, then "
+                "run it with --sudo-key. Subnet-owner knobs can usually use subnet set-param instead."
+            ),
+        }
+
+    def test_hyperparameter_workflow_help_with_command_stub(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9, command=" set-tempo ", value_flag=" --tempo ")
+        assert helpers["command"] == "set-tempo"
+        assert helpers["value_flag"] == "--tempo"
+        assert helpers["set"] == "agcli admin set-tempo --netuid 9 --tempo <value>"
+
+    def test_hyperparameter_workflow_help_with_full_command(self, admin):
+        helpers = admin.hyperparameter_workflow_help(
+            9,
+            command="set-commit-reveal",
+            value_flag="--enabled",
+            value=True,
+            sudo_key=" //Alice ",
+        )
+        assert helpers["command"] == "set-commit-reveal"
+        assert helpers["value_flag"] == "--enabled"
+        assert helpers["value"] == "true"
+        assert helpers["sudo_key"] == "//Alice"
+        assert helpers["set"] == "agcli admin set-commit-reveal --netuid 9 --enabled true --sudo-key //Alice"
+
+    def test_hyperparameter_workflow_help_rejects_value_flag_without_command(self, admin):
+        with pytest.raises(ValueError, match="value_flag requires command"):
+            admin.hyperparameter_workflow_help(9, value_flag="--tempo")
+
+    def test_hyperparameter_workflow_help_rejects_value_without_command(self, admin):
+        with pytest.raises(ValueError, match="value requires command and value_flag"):
+            admin.hyperparameter_workflow_help(9, value=12)
+
+    def test_hyperparameter_workflow_help_rejects_value_without_flag(self, admin):
+        with pytest.raises(ValueError, match="value requires command and value_flag"):
+            admin.hyperparameter_workflow_help(9, command="set-tempo", value=12)
+
+    def test_hyperparameter_workflow_help_rejects_sudo_key_without_command(self, admin):
+        with pytest.raises(ValueError, match="sudo_key requires command"):
+            admin.hyperparameter_workflow_help(9, sudo_key="//Alice")
+
+    def test_hyperparameter_workflow_help_rejects_empty_command(self, admin):
+        with pytest.raises(ValueError, match="command cannot be empty"):
+            admin.hyperparameter_workflow_help(9, command="   ")
+
+    def test_hyperparameter_workflow_help_rejects_empty_value_flag(self, admin):
+        with pytest.raises(ValueError, match="value_flag cannot be empty"):
+            admin.hyperparameter_workflow_help(9, command="set-tempo", value_flag="   ")
+
+    def test_hyperparameter_workflow_help_rejects_empty_sudo_key(self, admin):
+        with pytest.raises(ValueError, match="sudo_key cannot be empty"):
+            admin.hyperparameter_workflow_help(9, command="set-tempo", sudo_key="   ")
+
+    def test_hyperparameter_workflow_help_rejects_invalid_netuid(self, admin):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            admin.hyperparameter_workflow_help(0)
+
+    def test_hyperparameter_workflow_help_stringifies_float_value(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9, command="set-adjustment-alpha", value_flag="--alpha", value=0.5)
+        assert helpers["value"] == "0.5"
+        assert helpers["set"] == "agcli admin set-adjustment-alpha --netuid 9 --alpha 0.5"
+
+    def test_hyperparameter_workflow_help_stringifies_bool_value(self, admin):
+        helpers = admin.hyperparameter_workflow_help(
+            9, command="set-network-registration", value_flag="--allowed", value=False
+        )
+        assert helpers["value"] == "false"
+        assert helpers["set"] == "agcli admin set-network-registration --netuid 9 --allowed false"

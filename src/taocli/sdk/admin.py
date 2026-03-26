@@ -10,6 +10,108 @@ from taocli.sdk.base import SdkModule
 class Admin(SdkModule):
     """Admin (sudo) operations — set hyperparameters, raw sudo calls."""
 
+    _SUDO_NOTE = (
+        "Use admin list to discover the exact set-* command for root-only knobs, then "
+        "run it with --sudo-key. Subnet-owner knobs can usually use subnet set-param instead."
+    )
+
+    @staticmethod
+    def _netuid_arg(netuid: int) -> str:
+        """Normalize a subnet identifier for workflow helpers."""
+        if isinstance(netuid, bool):
+            raise ValueError("netuid must be an integer")
+        normalized = int(netuid)
+        if normalized <= 0:
+            raise ValueError("netuid must be greater than 0")
+        return str(normalized)
+
+    @staticmethod
+    def _text_arg(name: str, value: str) -> str:
+        """Normalize required text arguments used in workflow helpers."""
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError(f"{name} cannot be empty")
+        return normalized
+
+    @staticmethod
+    def _optional_text_arg(name: str, value: str | None) -> str | None:
+        """Normalize optional text arguments used in workflow helpers."""
+        if value is None:
+            return None
+        return Admin._text_arg(name, value)
+
+    @classmethod
+    def hyperparameter_workflow_help(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Return a compact runbook for root-only subnet hyperparameter mutations."""
+        netuid_arg = cls._netuid_arg(netuid)
+        command_arg = cls._optional_text_arg("command", command)
+        value_flag_arg = cls._optional_text_arg("value_flag", value_flag)
+        sudo_key_arg = cls._optional_text_arg("sudo_key", sudo_key)
+
+        if value_flag_arg is not None and command_arg is None:
+            raise ValueError("value_flag requires command")
+        if value is not None and (command_arg is None or value_flag_arg is None):
+            raise ValueError("value requires command and value_flag")
+        if sudo_key_arg is not None and command_arg is None:
+            raise ValueError("sudo_key requires command")
+
+        commands: dict[str, Any] = {
+            "netuid": int(netuid_arg),
+            "show": f"agcli subnet show --netuid {netuid_arg}",
+            "get": f"agcli subnet hyperparams --netuid {netuid_arg}",
+            "owner_param_list": f"agcli subnet set-param --netuid {netuid_arg} --param list",
+            "admin_list": "agcli admin list",
+            "raw": "agcli admin raw --call <sudo-call>",
+            "sudo_note": cls._SUDO_NOTE,
+        }
+
+        if command_arg is None:
+            return commands
+
+        mutation = f"agcli admin {command_arg} --netuid {netuid_arg}"
+        commands["command"] = command_arg
+        if value_flag_arg is not None:
+            mutation = f"{mutation} {value_flag_arg}"
+            commands["value_flag"] = value_flag_arg
+            if value is None:
+                mutation = f"{mutation} <value>"
+            else:
+                normalized_value = str(value).lower() if isinstance(value, bool) else str(value)
+                mutation = f"{mutation} {normalized_value}"
+                commands["value"] = normalized_value
+        if sudo_key_arg is not None:
+            mutation = f"{mutation} --sudo-key {sudo_key_arg}"
+            commands["sudo_key"] = sudo_key_arg
+        commands["set"] = mutation
+        return commands
+
+    @classmethod
+    def hyperparameter_mutation_help(
+        cls,
+        command: str,
+        netuid: int,
+        *,
+        value_flag: str,
+        value: str | int | float | bool,
+        sudo_key: str | None = None,
+    ) -> str:
+        """Build a normalized agcli admin command for a subnet hyperparameter change."""
+        command_arg = cls._text_arg("command", command)
+        value_flag_arg = cls._text_arg("value_flag", value_flag)
+        normalized_value = str(value).lower() if isinstance(value, bool) else str(value)
+        cmd = f"agcli admin {command_arg} --netuid {cls._netuid_arg(netuid)} {value_flag_arg} {normalized_value}"
+        if sudo_key is not None:
+            cmd = f"{cmd} --sudo-key {cls._text_arg('sudo_key', sudo_key)}"
+        return cmd
+
     def set_tempo(self, netuid: int, tempo: int, sudo_key: str | None = None) -> Any:
         """Set the tempo (blocks per epoch) for a subnet."""
         cmd = ["admin", "set-tempo", "--netuid", str(netuid), "--tempo", str(tempo)]

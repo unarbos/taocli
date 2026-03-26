@@ -123,3 +123,78 @@ class TestView:
         view.emissions(1, limit=10)
         cmd = mock_subprocess.call_args[0][0]
         assert "--limit" in cmd
+
+    def test_chain_data_workflow_help(self, view):
+        helpers = view.chain_data_workflow_help(1)
+        assert helpers == {
+            "netuid": 1,
+            "subnet": "agcli subnet show --netuid 1",
+            "metagraph": "agcli view metagraph --netuid 1",
+            "neurons": "agcli view metagraph --netuid 1",
+            "subnet_metagraph_full": "agcli subnet metagraph --netuid 1 --full",
+            "validators": "agcli view validators --netuid 1",
+            "endpoints": "agcli view axon --netuid 1",
+            "miner_endpoints": "agcli view axon --netuid 1",
+            "validator_endpoints": "agcli view axon --netuid 1",
+            "axon": "agcli view axon --netuid 1",
+            "probe": "agcli subnet probe --netuid 1",
+            "commits": "agcli subnet commits --netuid 1",
+            "health": "agcli view health --netuid 1",
+            "emissions": "agcli view emissions --netuid 1",
+            "hyperparams": "agcli subnet hyperparams --netuid 1",
+        }
+
+    def test_chain_data_workflow_help_with_uid(self, view):
+        helpers = view.chain_data_workflow_help(7, uid=3)
+        assert helpers["neuron"] == "agcli view neuron --netuid 7 --uid 3"
+        assert helpers["axon"] == "agcli view axon --netuid 7 --uid 3"
+        assert helpers["endpoints"] == "agcli view axon --netuid 7"
+        assert helpers["miner_endpoints"] == "agcli view axon --netuid 7"
+        assert helpers["probe"] == "agcli subnet probe --netuid 7 --uids 3"
+
+    def test_chain_data_workflow_help_includes_subnet_and_endpoint_aliases(self, view):
+        helpers = view.chain_data_workflow_help(9)
+        assert helpers["subnet"] == "agcli subnet show --netuid 9"
+        assert helpers["endpoints"] == "agcli view axon --netuid 9"
+        assert helpers["miner_endpoints"] == "agcli view axon --netuid 9"
+        assert helpers["validator_endpoints"] == "agcli view axon --netuid 9"
+        assert helpers["validators"] == "agcli view validators --netuid 9"
+        assert helpers["neurons"] == "agcli view metagraph --netuid 9"
+        assert helpers["commits"] == "agcli subnet commits --netuid 9"
+        assert helpers["hyperparams"] == "agcli subnet hyperparams --netuid 9"
+
+    def test_chain_data_workflow_help_keeps_neuron_and_commit_reads_when_uid_is_set(self, view):
+        helpers = view.chain_data_workflow_help(9, uid=4)
+        assert helpers["neurons"] == "agcli view metagraph --netuid 9"
+        assert helpers["neuron"] == "agcli view neuron --netuid 9 --uid 4"
+        assert helpers["commits"] == "agcli subnet commits --netuid 9"
+        assert helpers["probe"] == "agcli subnet probe --netuid 9 --uids 4"
+
+    def test_chain_data_workflow_help_keeps_commit_reads_with_hotkey_filter(self, view):
+        helpers = view.chain_data_workflow_help(7, hotkey_address="5F...")
+        assert helpers["axon"] == "agcli view axon --netuid 7 --hotkey-address 5F..."
+        assert helpers["commits"] == "agcli subnet commits --netuid 7"
+        assert helpers["neurons"] == "agcli view metagraph --netuid 7"
+
+    def test_chain_data_workflow_help_keeps_endpoint_aliases_with_hotkey_filter(self, view):
+        helpers = view.chain_data_workflow_help(7, hotkey_address="5F...")
+        assert helpers["axon"] == "agcli view axon --netuid 7 --hotkey-address 5F..."
+        assert helpers["endpoints"] == "agcli view axon --netuid 7"
+        assert helpers["miner_endpoints"] == "agcli view axon --netuid 7"
+        assert helpers["probe"] == "agcli subnet probe --netuid 7"
+
+    def test_chain_data_workflow_help_with_hotkey(self, view):
+        helpers = view.chain_data_workflow_help(7, hotkey_address=" 5F... ")
+        assert helpers["axon"] == "agcli view axon --netuid 7 --hotkey-address 5F..."
+
+    def test_chain_data_workflow_help_rejects_invalid_netuid(self, view):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            view.chain_data_workflow_help(0)
+
+    def test_chain_data_workflow_help_rejects_invalid_uid(self, view):
+        with pytest.raises(ValueError, match="uid must be greater than or equal to 0"):
+            view.chain_data_workflow_help(1, uid=-1)
+
+    def test_chain_data_workflow_help_rejects_empty_hotkey(self, view):
+        with pytest.raises(ValueError, match="hotkey_address cannot be empty"):
+            view.chain_data_workflow_help(1, hotkey_address="   ")
