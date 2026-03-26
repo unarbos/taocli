@@ -2597,6 +2597,7 @@ class Weights(SdkModule):
         args = ["agcli", "weights", "show", "--netuid", cls._netuid_arg(netuid)]
         if hotkey_address is not None:
             normalized_hotkey = cls._optional_text("hotkey_address", hotkey_address)
+            assert normalized_hotkey is not None  # guaranteed by guard above
             args += ["--hotkey-address", normalized_hotkey]
         if limit is not None:
             if isinstance(limit, bool) or not isinstance(limit, int):

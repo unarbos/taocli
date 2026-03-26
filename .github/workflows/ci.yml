@@ -70,8 +70,9 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          slug: unarbos/taocli
           files: coverage.xml
-          fail_ci_if_error: false
+          fail_ci_if_error: true
           verbose: true
       - name: Upload coverage artifact
         if: always()
