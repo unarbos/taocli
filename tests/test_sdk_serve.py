@@ -64,6 +64,18 @@ class TestServe:
         helpers = serve.axon_workflow_help(8, "0.0.0.0", 8080)
         assert helpers == {
             "netuid": 8,
+            "scope": "subnet",
+            "summary": (
+                "Serve SN8 0.0.0.0:8080 on subnet 8, then verify registration, endpoint metadata, "
+                "and reachability."
+            ),
+            "recommended_order": [
+                "registration_check",
+                "serve_axon",
+                "endpoint_check",
+                "reachability_check",
+                "weights_status",
+            ],
             "serve_axon": "agcli serve axon --netuid 8 --ip 0.0.0.0 --port 8080",
             "reset": "agcli serve reset --netuid 8",
             "inspect_axon": "agcli view axon --netuid 8",
@@ -105,6 +117,9 @@ class TestServe:
                 "After serving SN8 0.0.0.0:8080, verify the endpoint and any validator "
                 "workflow assumptions before advertising it to operators."
             ),
+            "primary_serve": "agcli serve axon --netuid 8 --ip 0.0.0.0 --port 8080",
+            "endpoint_check": "agcli view axon --netuid 8",
+            "reachability_check": "agcli subnet probe --netuid 8",
         }
 
     def test_axon_workflow_help_with_wallet_and_hotkey(self, serve):
@@ -477,3 +492,101 @@ class TestServe:
     def test_axon_workflow_help_accepts_hostname(self, serve):
         helpers = serve.axon_workflow_help(1, "validator-1.local", 8080)
         assert helpers["serve_axon"].endswith("--ip validator-1.local --port 8080")
+
+    def test_axon_workflow_help_includes_operator_summary_fields(self, serve):
+        helpers = serve.axon_workflow_help(8, "127.0.0.1", 8080, wallet="cold", hotkey="miner")
+        assert helpers["scope"] == "wallet_and_hotkey"
+        assert helpers["recommended_order"] == [
+            "registration_check",
+            "serve_axon",
+            "endpoint_check",
+            "reachability_check",
+            "weights_status",
+        ]
+        assert helpers["primary_serve"] == helpers["serve_axon"]
+        assert helpers["endpoint_check"] == helpers["inspect_axon"]
+        assert helpers["reachability_check"] == helpers["probe"]
+        assert helpers["summary"] == (
+            "Serve SN8 127.0.0.1:8080 on subnet 8 for hotkey miner from wallet cold, then verify "
+            "registration, endpoint metadata, and reachability."
+        )
+
+    def test_axon_workflow_help_includes_subnet_scope_summary_without_wallets(self, serve):
+        helpers = serve.axon_workflow_help(8, "127.0.0.1", 8080)
+        assert helpers["scope"] == "subnet"
+        assert helpers["summary"] == (
+            "Serve SN8 127.0.0.1:8080 on subnet 8, then verify registration, endpoint metadata, and reachability."
+        )
+
+    def test_axon_validation_help_without_payloads(self, serve):
+        helpers = serve.axon_validation_help(8, "127.0.0.1", 8080)
+        assert helpers["validated_reads"] == []
+        assert helpers["missing_reads"] == ["registration_check", "axon", "probe"]
+        assert helpers["validation_status"] == "missing"
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 8"
+        assert helpers["workflow"]["primary_serve"] == "agcli serve axon --netuid 8 --ip 127.0.0.1 --port 8080"
+
+    def test_axon_validation_help_with_partial_payloads(self, serve):
+        helpers = serve.axon_validation_help(8, "127.0.0.1", 8080, registration_check={"netuid": 8}, probe={"ok": True})
+        assert helpers["validated_reads"] == ["registration_check", "probe"]
+        assert helpers["missing_reads"] == ["axon"]
+        assert helpers["validation_status"] == "partial"
+        assert helpers["validation_summary"] == (
+            "Serve verification on subnet 8 has reads registration_check, probe; still missing axon."
+        )
+        assert helpers["next_validation_step"] == "agcli view axon --netuid 8"
+
+    def test_axon_validation_help_with_complete_payloads(self, serve):
+        helpers = serve.axon_validation_help(
+            8,
+            "127.0.0.1",
+            8080,
+            registration_check={"netuid": 8},
+            axon={"ip": "127.0.0.1"},
+            probe={"ok": True},
+        )
+        assert helpers["validation_status"] == "ready"
+        assert helpers["validation_summary"] == (
+            "Serve verification on subnet 8 is ready: registration_check, axon, and probe reads are present."
+        )
+        assert helpers["next_validation_step"] == "agcli weights status --netuid 8"
+
+    def test_axon_validation_help_treats_blank_payload_as_missing(self, serve):
+        helpers = serve.axon_validation_help(8, "127.0.0.1", 8080, registration_check="  ", axon={"uid": 1})
+        assert helpers["validated_reads"] == ["axon"]
+        assert helpers["missing_reads"] == ["registration_check", "probe"]
+
+    def test_axon_validation_text(self, serve):
+        text = serve.axon_validation_text(8, "127.0.0.1", 8080, registration_check={"netuid": 8})
+        assert text == "Serve verification on subnet 8 has reads registration_check; still missing axon, probe."
+
+    def test_axon_snapshot_help_preserves_workflow_and_validation_fields(self, serve):
+        helpers = serve.axon_snapshot_help(
+            8,
+            "127.0.0.1",
+            8080,
+            wallet="cold",
+            axon={"uid": 1},
+        )
+        assert helpers["workflow"]["serve_axon"] == (
+            "agcli --wallet cold serve axon --netuid 8 --ip 127.0.0.1 --port 8080"
+        )
+        assert helpers["validation_status"] == "partial"
+        assert helpers["validated_reads"] == ["axon"]
+        assert helpers["missing_reads"] == ["registration_check", "probe"]
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 8"
+
+    def test_axon_snapshot_text(self, serve):
+        text = serve.axon_snapshot_text(8, "127.0.0.1", 8080, probe={"ok": True})
+        assert text == (
+            "Serve verification on subnet 8 has reads probe; still missing registration_check, axon. "
+            "Next: agcli subnet show --netuid 8"
+        )
+
+    def test_axon_validation_help_rejects_boolean_netuid(self, serve):
+        with pytest.raises(ValueError, match="netuid must be an integer"):
+            serve.axon_validation_help(True, "127.0.0.1", 8080)
+
+    def test_axon_snapshot_help_rejects_empty_hotkey(self, serve):
+        with pytest.raises(ValueError, match="hotkey cannot be empty"):
+            serve.axon_snapshot_help(8, "127.0.0.1", 8080, hotkey="   ")

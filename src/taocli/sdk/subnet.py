@@ -79,6 +79,150 @@ class Subnet(SdkModule):
         """Return the discovery command for listable subnet parameters."""
         return f"{prefix} subnet set-param --netuid {netuid_arg} --param list"
 
+    @staticmethod
+    def _has_payload(payload: object | None) -> bool:
+        """Return whether a workflow payload is meaningfully present."""
+        if payload is None:
+            return False
+        if isinstance(payload, str):
+            return bool(payload.strip())
+        if isinstance(payload, (list, tuple, set, dict)):
+            return bool(payload)
+        return True
+
+    @staticmethod
+    def _hyperparameter_validation_status(validated_reads: list[str]) -> str:
+        """Return a compact workflow status for hyperparameter validation helpers."""
+        if len(validated_reads) == 3:
+            return "ready"
+        if validated_reads:
+            return "partial"
+        return "missing"
+
+    @classmethod
+    def _hyperparameter_validation_summary(
+        cls,
+        netuid_arg: str,
+        validated_reads: list[str],
+        missing_reads: list[str],
+    ) -> str:
+        """Return a compact text summary for hyperparameter validation helpers."""
+        if not validated_reads:
+            return (
+                f"Hyperparameter reads for subnet {netuid_arg} still need subnet, hyperparams, and param_list output."
+            )
+        if missing_reads:
+            return (
+                f"Hyperparameter reads for subnet {netuid_arg} have {', '.join(validated_reads)}; "
+                f"still missing {', '.join(missing_reads)}."
+            )
+        return (
+            f"Hyperparameter reads for subnet {netuid_arg} are ready: subnet, "
+            "hyperparams, and param_list output are present."
+        )
+
+    @classmethod
+    def _hyperparameter_next_validation_step(
+        cls,
+        workflow: dict[str, Any],
+        missing_reads: list[str],
+    ) -> str:
+        """Return the next command operators should run for hyperparameter validation."""
+        if "subnet" in missing_reads:
+            return str(workflow["show"])
+        if "hyperparams" in missing_reads:
+            return str(workflow["get"])
+        if "param_list" in missing_reads:
+            return str(workflow["param_list"])
+        return str(workflow["set"])
+
+    @staticmethod
+    def _registration_scope(wallet: str | None, hotkey: str | None) -> str:
+        """Return a compact selector label for registration helpers."""
+        if wallet is not None and hotkey is not None:
+            return "wallet_and_hotkey"
+        if hotkey is not None:
+            return "hotkey"
+        if wallet is not None:
+            return "wallet"
+        return "subnet"
+
+    @staticmethod
+    def _registration_summary(netuid_arg: str, wallet: str | None, hotkey: str | None) -> str:
+        """Return a compact operator summary for registration workflows."""
+        if wallet is not None and hotkey is not None:
+            return (
+                f"Check subnet {netuid_arg} readiness, then register hotkey {hotkey} from wallet {wallet}."
+            )
+        if hotkey is not None:
+            return f"Check subnet {netuid_arg} readiness, then register hotkey {hotkey}."
+        if wallet is not None:
+            return f"Check subnet {netuid_arg} readiness, then register from wallet {wallet}."
+        return f"Check subnet {netuid_arg} readiness, then register on subnet {netuid_arg}."
+
+    @staticmethod
+    def _registration_confirmation_note() -> str:
+        """Return guidance for proving a registration landed on-chain."""
+        return (
+            "After registration, inspect the full metagraph and confirm the new hotkey or UID appears before moving on."
+        )
+
+    @staticmethod
+    def _registration_validation_status(validated_reads: list[str], confirmed_registered: bool) -> str:
+        """Return a compact workflow status for registration validation helpers."""
+        if confirmed_registered:
+            return "registered"
+        if len(validated_reads) == 3:
+            return "ready"
+        if validated_reads:
+            return "partial"
+        return "missing"
+
+    @classmethod
+    def _registration_validation_summary(
+        cls,
+        netuid_arg: str,
+        validated_reads: list[str],
+        missing_reads: list[str],
+        confirmed_registered: bool,
+    ) -> str:
+        """Return a compact text summary for registration validation helpers."""
+        if confirmed_registered:
+            return (
+                "Registration on subnet "
+                f"{netuid_arg} looks confirmed: preflight reads are ready and metagraph proof is present."
+            )
+        if not validated_reads:
+            return (
+                f"Registration on subnet {netuid_arg} still needs preflight reads: {', '.join(missing_reads)}."
+            )
+        if missing_reads:
+            return (
+                f"Registration on subnet {netuid_arg} has preflight reads {', '.join(validated_reads)}; "
+                f"still missing {', '.join(missing_reads)}."
+            )
+        return (
+            f"Registration on subnet {netuid_arg} is ready: subnet, registration cost, and health checks are present."
+        )
+
+    @classmethod
+    def _registration_next_validation_step(
+        cls,
+        workflow: dict[str, Any],
+        missing_reads: list[str],
+        confirmed_registered: bool,
+    ) -> str:
+        """Return the next command operators should run for registration validation."""
+        if "subnet" in missing_reads:
+            return str(workflow["subnet"])
+        if "registration_cost" in missing_reads:
+            return str(workflow["registration_cost"])
+        if "health" in missing_reads:
+            return str(workflow["health"])
+        if confirmed_registered:
+            return str(workflow["hyperparams"])
+        return str(workflow["primary_register"])
+
     @classmethod
     def registration_workflow_help(
         cls,
@@ -93,11 +237,22 @@ class Subnet(SdkModule):
         """Return a compact runbook for subnet registration workflows."""
         netuid_arg = cls._netuid_arg(netuid)
         prefix, context = cls._registration_prefix(wallet=wallet, hotkey=hotkey)
+        wallet_arg = context.get("wallet")
+        hotkey_arg = context.get("hotkey")
         register_neuron = f"{prefix} subnet register-neuron --netuid {netuid_arg}"
         pow_cmd = f"{prefix} subnet pow --netuid {netuid_arg}"
         snipe_cmd = f"{prefix} subnet snipe --netuid {netuid_arg}"
         commands: dict[str, Any] = {
             "netuid": int(netuid_arg),
+            "scope": cls._registration_scope(wallet_arg, hotkey_arg),
+            "summary": cls._registration_summary(netuid_arg, wallet_arg, hotkey_arg),
+            "recommended_order": [
+                "subnet",
+                "registration_cost",
+                "health",
+                "register_neuron",
+                "post_registration_check",
+            ],
             "subnet": f"agcli subnet show --netuid {netuid_arg}",
             "hyperparams": f"agcli subnet hyperparams --netuid {netuid_arg}",
             "registration_cost": f"agcli subnet cost --netuid {netuid_arg}",
@@ -105,6 +260,9 @@ class Subnet(SdkModule):
             "register_neuron": register_neuron,
             "pow_register": pow_cmd,
             "snipe_register": snipe_cmd,
+            "post_registration_check": f"agcli subnet metagraph --netuid {netuid_arg} --full",
+            "primary_register": register_neuron,
+            "registration_confirmation_note": cls._registration_confirmation_note(),
         }
         commands.update(context)
         if threads is not None:
@@ -120,6 +278,121 @@ class Subnet(SdkModule):
         commands["pow_register"] = pow_cmd
         commands["snipe_register"] = snipe_cmd
         return commands
+
+    @classmethod
+    def registration_validation_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        subnet: object | None = None,
+        registration_cost: object | None = None,
+        health: object | None = None,
+        registration_proof: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a compact validation summary for supplied registration reads."""
+        workflow = cls.registration_workflow_help(netuid, wallet=wallet, hotkey=hotkey)
+        read_payloads = (("subnet", subnet), ("registration_cost", registration_cost), ("health", health))
+        validated_reads = [name for name, payload in read_payloads if cls._has_payload(payload)]
+        missing_reads = [name for name in ("subnet", "registration_cost", "health") if name not in validated_reads]
+        confirmed_registered = cls._has_payload(registration_proof)
+        return {
+            "netuid": workflow["netuid"],
+            "scope": workflow["scope"],
+            "validated_reads": validated_reads,
+            "missing_reads": missing_reads,
+            "confirmed_registered": confirmed_registered,
+            "validation_status": cls._registration_validation_status(validated_reads, confirmed_registered),
+            "validation_summary": cls._registration_validation_summary(
+                str(workflow["netuid"]), validated_reads, missing_reads, confirmed_registered
+            ),
+            "next_validation_step": cls._registration_next_validation_step(
+                workflow, missing_reads, confirmed_registered
+            ),
+            "workflow": workflow,
+        }
+
+    @classmethod
+    def registration_validation_text(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        subnet: object | None = None,
+        registration_cost: object | None = None,
+        health: object | None = None,
+        registration_proof: object | None = None,
+    ) -> str:
+        """Return a concise text summary for supplied registration reads."""
+        summary = cls.registration_validation_help(
+            netuid,
+            wallet=wallet,
+            hotkey=hotkey,
+            subnet=subnet,
+            registration_cost=registration_cost,
+            health=health,
+            registration_proof=registration_proof,
+        )
+        return str(summary["validation_summary"])
+
+    @classmethod
+    def registration_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        subnet: object | None = None,
+        registration_cost: object | None = None,
+        health: object | None = None,
+        registration_proof: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a practical operator snapshot combining registration workflow and validation fields."""
+        validation = cls.registration_validation_help(
+            netuid,
+            wallet=wallet,
+            hotkey=hotkey,
+            subnet=subnet,
+            registration_cost=registration_cost,
+            health=health,
+            registration_proof=registration_proof,
+        )
+        workflow = dict(validation["workflow"])
+        snapshot = dict(workflow)
+        snapshot["workflow"] = workflow
+        snapshot["validation_status"] = validation["validation_status"]
+        snapshot["validation_summary"] = validation["validation_summary"]
+        snapshot["validated_reads"] = validation["validated_reads"]
+        snapshot["missing_reads"] = validation["missing_reads"]
+        snapshot["confirmed_registered"] = validation["confirmed_registered"]
+        snapshot["next_validation_step"] = validation["next_validation_step"]
+        return snapshot
+
+    @classmethod
+    def registration_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        subnet: object | None = None,
+        registration_cost: object | None = None,
+        health: object | None = None,
+        registration_proof: object | None = None,
+    ) -> str:
+        """Return a concise operator snapshot text for supplied registration reads."""
+        snapshot = cls.registration_snapshot_help(
+            netuid,
+            wallet=wallet,
+            hotkey=hotkey,
+            subnet=subnet,
+            registration_cost=registration_cost,
+            health=health,
+            registration_proof=registration_proof,
+        )
+        return f"{snapshot['validation_summary']} Next: {snapshot['next_validation_step']}"
 
     @classmethod
     def hyperparameter_workflow_help(
@@ -163,6 +436,207 @@ class Subnet(SdkModule):
     ) -> dict[str, Any]:
         """Backward-compatible alias for hyperparameter_workflow_help."""
         return cls.hyperparameter_workflow_help(netuid, wallet=wallet, param=param, value=value)
+
+    @classmethod
+    def hyperparameter_validation_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a compact validation summary for supplied hyperparameter reads."""
+        workflow = cls.hyperparameter_workflow_help(netuid, wallet=wallet, param=param, value=value)
+        read_payloads = (("subnet", subnet), ("hyperparams", hyperparams), ("param_list", param_list))
+        validated_reads = [name for name, payload in read_payloads if cls._has_payload(payload)]
+        missing_reads = [name for name in ("subnet", "hyperparams", "param_list") if name not in validated_reads]
+        return {
+            "netuid": workflow["netuid"],
+            "validated_reads": validated_reads,
+            "missing_reads": missing_reads,
+            "validation_status": cls._hyperparameter_validation_status(validated_reads),
+            "validation_summary": cls._hyperparameter_validation_summary(
+                str(workflow["netuid"]), validated_reads, missing_reads
+            ),
+            "next_validation_step": cls._hyperparameter_next_validation_step(workflow, missing_reads),
+            "workflow": workflow,
+        }
+
+    @classmethod
+    def hyperparameter_validation_text(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> str:
+        """Return a concise text summary for supplied hyperparameter reads."""
+        summary = cls.hyperparameter_validation_help(
+            netuid,
+            wallet=wallet,
+            param=param,
+            value=value,
+            subnet=subnet,
+            hyperparams=hyperparams,
+            param_list=param_list,
+        )
+        return str(summary["validation_summary"])
+
+    @classmethod
+    def hyperparameter_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a practical operator snapshot combining hyperparameter workflow and validation fields."""
+        validation = cls.hyperparameter_validation_help(
+            netuid,
+            wallet=wallet,
+            param=param,
+            value=value,
+            subnet=subnet,
+            hyperparams=hyperparams,
+            param_list=param_list,
+        )
+        workflow = dict(validation["workflow"])
+        snapshot = dict(workflow)
+        snapshot["workflow"] = workflow
+        snapshot["validation_status"] = validation["validation_status"]
+        snapshot["validation_summary"] = validation["validation_summary"]
+        snapshot["validated_reads"] = validation["validated_reads"]
+        snapshot["missing_reads"] = validation["missing_reads"]
+        snapshot["next_validation_step"] = validation["next_validation_step"]
+        return snapshot
+
+    @classmethod
+    def hyperparameter_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> str:
+        """Return a concise operator snapshot text for supplied hyperparameter reads."""
+        snapshot = cls.hyperparameter_snapshot_help(
+            netuid,
+            wallet=wallet,
+            param=param,
+            value=value,
+            subnet=subnet,
+            hyperparams=hyperparams,
+            param_list=param_list,
+        )
+        return f"{snapshot['validation_summary']} Next: {snapshot['next_validation_step']}"
+
+    @classmethod
+    def hyperparameters_validation_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for hyperparameter_validation_help."""
+        return cls.hyperparameter_validation_help(
+            netuid,
+            wallet=wallet,
+            param=param,
+            value=value,
+            subnet=subnet,
+            hyperparams=hyperparams,
+            param_list=param_list,
+        )
+
+    @classmethod
+    def hyperparameters_validation_text(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> str:
+        """Backward-compatible alias for hyperparameter_validation_text."""
+        return cls.hyperparameter_validation_text(
+            netuid,
+            wallet=wallet,
+            param=param,
+            value=value,
+            subnet=subnet,
+            hyperparams=hyperparams,
+            param_list=param_list,
+        )
+
+    @classmethod
+    def hyperparameters_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for hyperparameter_snapshot_help."""
+        return cls.hyperparameter_snapshot_help(
+            netuid,
+            wallet=wallet,
+            param=param,
+            value=value,
+            subnet=subnet,
+            hyperparams=hyperparams,
+            param_list=param_list,
+        )
+
+    @classmethod
+    def hyperparameters_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        wallet: str | None = None,
+        param: str | None = None,
+        value: str | None = None,
+        subnet: object | None = None,
+        hyperparams: object | None = None,
+        param_list: object | None = None,
+    ) -> str:
+        """Backward-compatible alias for hyperparameter_snapshot_text."""
+        return cls.hyperparameter_snapshot_text(
+            netuid,
+            wallet=wallet,
+            param=param,
+            value=value,
+            subnet=subnet,
+            hyperparams=hyperparams,
+            param_list=param_list,
+        )
 
     def list(self, at_block: int | None = None) -> Any:
         """List all subnets on the network."""

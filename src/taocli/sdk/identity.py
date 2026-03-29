@@ -20,7 +20,7 @@ class Identity(SdkModule):
 
     def get(self, address: str | None = None) -> Any:
         """Get on-chain identity for an address."""
-        args = ["identity", "get"]
+        args = ["identity", "show"]
         args += self._opt("--address", address)
         return self._run(args)
 

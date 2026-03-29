@@ -327,20 +327,23 @@ class Weights(SdkModule):
             "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions for "
             "live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
             "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-            "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-            "wallet_sign plus wallet_verify plus balance plus validators/stake/stake_add/validator_requirements for "
-            "wallet selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-            "association recovery, manual address derivation checks, signature generation, signature verification, "
-            "coldkey funding, "
-            "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
-            "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
-            "pow_register/snipe_register/health for subnet readiness, subnet entry, registration retries, "
-            "root-only mutation escape hatches, or mutation discovery, "
-            "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
-            "axon/miner_endpoints/validator_endpoints for serve retries, TLS serve recovery, prometheus recovery, "
-            "endpoint recovery, or serve/endpoint verification, watch plus monitor for live UID/state drift, "
-            "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
-            "subnet for available netuid discovery and the current subnet summary."
+            "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+            "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus hotkey_address plus "
+            "balance plus validators/stake/stake_add/validator_requirements for wallet selector inspection, "
+            "persisted selector correction, wallet inventory plus selected coldkey/hotkey identity confirmation, "
+            "hotkey association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+            "signature generation, signature verification, coldkey funding, validator readiness, stake top-ups, or "
+            "validator threshold checks, hyperparams plus owner_param_list/set_param/admin_list/admin_raw/"
+            "registration_cost/register_neuron/pow_register/snipe_register/health for subnet readiness, subnet "
+            "entry, registration retries, root-only mutation escape hatches, or mutation discovery, serve_axon plus "
+            "serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus axon/miner_endpoints/"
+            "validator_endpoints for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
+            "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus doctor "
+            "for Docker/local runtime readiness before local weight validation, explain_weights/"
+            "explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus subnet for available "
+            "netuid discovery and the current subnet summary."
+            " Use localnet_scaffold to bootstrap a local chain and doctor to confirm the host is ready before trying "
+            "commit-reveal validation."
         )
 
     @staticmethod
@@ -351,28 +354,30 @@ class Weights(SdkModule):
             "inspect_pending_commits_command for subnet-wide pending commit/watch drift checks, "
             "inspect_metagraph_command, inspect_chain_data_command, inspect_emissions_command, and "
             "inspect_monitor_command for live subnet UIDs/state drift, inspect_neuron_command for per-UID member "
-            "detail after metagraph/monitor checks, inspect_config_show_command, inspect_wallet_show_command, "
+            "detail after metagraph/monitor checks, inspect_config_show_command, "
+            "inspect_config_set_wallet_command, inspect_config_set_hotkey_command, inspect_wallet_show_command, "
             "inspect_wallet_current_command, inspect_wallet_associate_command, inspect_wallet_derive_command, "
-            "inspect_wallet_sign_command, inspect_wallet_verify_command, inspect_balance_command, "
-            "inspect_validators_command, inspect_stake_command, inspect_stake_add_command, and "
-            "inspect_validator_requirements_command for wallet selector inspection, wallet inventory plus "
-            "selected coldkey/hotkey identity confirmation, hotkey association recovery, manual address "
-            "derivation checks, signature generation, signature verification, coldkey funding, validator readiness, "
-            "stake top-ups, or validator threshold checks, "
-            "inspect_hyperparams_command plus "
-            "inspect_owner_param_list_command, inspect_set_param_command, inspect_admin_list_command, "
-            "inspect_admin_raw_command, inspect_registration_cost_command, "
-            "inspect_register_neuron_command, inspect_pow_register_command, "
-            "inspect_snipe_register_command, and inspect_health_command for subnet readiness, "
-            "subnet entry, registration retries, root-only mutation escape hatches, or mutation discovery, "
+            "inspect_wallet_sign_command, inspect_wallet_verify_command, inspect_hotkey_address_command, "
+            "inspect_balance_command, inspect_validators_command, inspect_stake_command, "
+            "inspect_stake_add_command, and inspect_validator_requirements_command for wallet selector inspection, "
+            "persisted selector correction, wallet inventory plus selected coldkey/hotkey identity confirmation, "
+            "hotkey association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+            "signature generation, signature verification, coldkey funding, validator readiness, stake top-ups, or "
+            "validator threshold checks, inspect_hyperparams_command plus inspect_owner_param_list_command, "
+            "inspect_set_param_command, inspect_admin_list_command, inspect_admin_raw_command, "
+            "inspect_registration_cost_command, inspect_register_neuron_command, inspect_pow_register_command, "
+            "inspect_snipe_register_command, and inspect_health_command for subnet readiness, subnet entry, "
+            "registration retries, root-only mutation escape hatches, or mutation discovery, "
             "inspect_serve_axon_command plus inspect_serve_axon_tls_command plus "
             "inspect_serve_prometheus_command plus inspect_serve_reset_command plus inspect_probe_command plus "
             "inspect_axon_command, inspect_miner_endpoints_command, and inspect_validator_endpoints_command for "
             "serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or serve/endpoint "
             "verification, inspect_watch_command plus inspect_monitor_command for live UID/state drift, "
-            "explain_weights_command plus explain_commit_reveal_command for copy-pasteable concept refreshers, "
-            "inspect_subnets_command for available netuid discovery, and inspect_subnet_command for the current "
-            "subnet summary."
+            "inspect_localnet_scaffold_command plus inspect_doctor_command for Docker/local runtime readiness before "
+            "local weight validation, explain_weights_command plus explain_commit_reveal_command for copy-pasteable "
+            "concept refreshers, inspect_subnets_command for available netuid discovery, and inspect_subnet_command "
+            "for the current subnet summary. Use inspect_localnet_scaffold_command to bootstrap a local chain and "
+            "inspect_doctor_command to confirm the host is ready before retrying local commit-reveal validation."
         )
 
     @staticmethod
@@ -423,6 +428,7 @@ class Weights(SdkModule):
             inspect_pending_commits_command=cls.inspect_pending_commits_help(netuid),
             inspect_version_key_command=cls.inspect_version_key_help(netuid),
             **cls._adjacent_recovery_fields(netuid),
+            local_validation_tip=cls._local_validation_tip(),
             preflight_note=(
                 "Inspect weights status and subnet hyperparams before commit/reveal so the reveal window, "
                 "commit-reveal mode, and version_key still match the subnet."
@@ -645,12 +651,26 @@ class Weights(SdkModule):
                     "Retry reveal with the saved state record and the overridden version_key shown in reveal_command."
                 )
             return "Retry reveal with the saved state record after updating reveal_command to the matching version_key."
+        if any(needle in error for needle in ("RevealTooEarly", "NotInRevealPeriod")):
+            return (
+                "Keep the saved state record, then retry the exact saved reveal_command when the reveal window opens."
+            )
+        if any(needle in error for needle in ("RevealTooLate", "ExpiredWeightCommit", "Custom error: 77")):
+            return (
+                "Create a fresh commit, save its new reveal state, and retry reveal during the next valid reveal "
+                "window."
+            )
         if any(needle in error for needle in ("InvalidRevealCommitHashNotMatch", "Custom error: 51")):
             return "Retry reveal with the exact saved reveal_command from this state record."
         if any(needle in error for needle in ("NoWeightsCommitFound", "Custom error: 50")):
             return (
                 "Retry reveal with the exact saved reveal_command from this state record, or create a fresh commit "
                 "if the original one no longer exists on-chain."
+            )
+        if any(needle in error for needle in ("TooManyUnrevealedCommits", "Custom error: 76")):
+            return (
+                "Inspect the current pending commits for this hotkey, then reveal the saved commit if it is still "
+                "active or wait for older commits to clear before creating a fresh commit."
             )
         return None
 
@@ -719,25 +739,31 @@ class Weights(SdkModule):
         return {
             "inspect_stake_command": stake_command,
             "inspect_config_show_command": cls.inspect_config_show_help(),
+            "inspect_config_set_wallet_command": cls.inspect_config_set_wallet_help(),
+            "inspect_config_set_hotkey_command": cls.inspect_config_set_hotkey_help(),
             "inspect_wallet_show_command": cls.inspect_wallet_show_help(),
             "inspect_wallet_current_command": cls.inspect_wallet_current_help(),
             "inspect_wallet_associate_command": cls.inspect_wallet_associate_help(),
             "inspect_wallet_derive_command": cls.inspect_wallet_derive_help(),
             "inspect_wallet_sign_command": cls.inspect_wallet_sign_help(),
             "inspect_wallet_verify_command": cls.inspect_wallet_verify_help(),
+            "inspect_hotkey_address_command": cls.inspect_hotkey_address_help(),
             "inspect_balance_command": cls.inspect_balance_help(),
             "inspect_stake_add_command": cls.inspect_stake_add_help(netuid),
             "inspect_validator_requirements_command": hyperparams_command,
             "stake_recovery_note": (
                 "Run inspect_stake_command to confirm the hotkey stake on this subnet, then compare it with "
                 "inspect_validator_requirements_command before retrying. Use inspect_config_show_command when the "
-                "wrong wallet or hotkey may be selected, inspect_wallet_show_command to inspect wallet inventory, "
-                "inspect_wallet_current_command to confirm the selected coldkey/hotkey identity, "
-                "inspect_wallet_associate_command when the hotkey may need to be re-associated to the coldkey, "
-                "inspect_wallet_derive_command for manual address confirmation from a pubkey or mnemonic, "
-                "inspect_wallet_sign_command when you need to generate a fresh confirmation signature, "
-                "inspect_wallet_verify_command when you need explicit signer/signature confirmation, and "
-                "inspect_balance_command when the coldkey may need more TAO before staking."
+                "wrong wallet or hotkey may be selected, inspect_config_set_wallet_command and "
+                "inspect_config_set_hotkey_command when the persisted defaults need correction, "
+                "inspect_wallet_show_command to inspect wallet inventory, inspect_wallet_current_command to confirm "
+                "the selected coldkey/hotkey identity, inspect_wallet_associate_command when the hotkey may need to "
+                "be re-associated to the coldkey, inspect_wallet_derive_command for manual address confirmation from "
+                "a pubkey or mnemonic, inspect_hotkey_address_command when you need explicit hotkey-address "
+                "confirmation against subnet endpoint data, inspect_wallet_sign_command when you need to generate a "
+                "fresh confirmation signature, inspect_wallet_verify_command when you need explicit "
+                "signer/signature confirmation, and inspect_balance_command when the coldkey may need more TAO "
+                "before staking."
             ),
         }
 
@@ -810,6 +836,16 @@ class Weights(SdkModule):
         return " ".join(["agcli", "config", "show"])
 
     @staticmethod
+    def inspect_config_set_wallet_help() -> str:
+        """Return a copy-paste-ready config command for correcting the persisted default wallet."""
+        return " ".join(["agcli", "config", "set", "--key", "wallet", "--value", "<wallet-name>"])
+
+    @staticmethod
+    def inspect_config_set_hotkey_help() -> str:
+        """Return a copy-paste-ready config command for correcting the persisted default hotkey."""
+        return " ".join(["agcli", "config", "set", "--key", "hotkey", "--value", "<hotkey-name>"])
+
+    @staticmethod
     def inspect_wallet_show_help() -> str:
         """Return a copy-paste-ready wallet inspection command for coldkey/hotkey identity recovery."""
         return " ".join(["agcli", "wallet", "show", "--all"])
@@ -850,6 +886,11 @@ class Weights(SdkModule):
     def inspect_wallet_sign_help() -> str:
         """Return a copy-paste-ready wallet sign command for generating a confirmation signature."""
         return " ".join(["agcli", "wallet", "sign", "--message", "<message>"])
+
+    @staticmethod
+    def inspect_hotkey_address_help() -> str:
+        """Return a copy-paste-ready axon lookup for explicit hotkey-address confirmation."""
+        return " ".join(["agcli", "view", "axon", "--netuid", "<netuid>", "--hotkey-address", "<ss58>"])
 
     @staticmethod
     def inspect_balance_help() -> str:
@@ -1015,6 +1056,16 @@ class Weights(SdkModule):
         return " ".join(["agcli", "admin", "raw", "--call", "<sudo-call>"])
 
     @staticmethod
+    def inspect_localnet_scaffold_help() -> str:
+        """Return a copy-paste-ready localnet scaffold command for local validation setup."""
+        return " ".join(["agcli", "localnet", "scaffold"])
+
+    @staticmethod
+    def inspect_doctor_help() -> str:
+        """Return a copy-paste-ready environment diagnostic command for local troubleshooting."""
+        return " ".join(["agcli", "doctor"])
+
+    @staticmethod
     def explain_weights_help() -> str:
         """Return a copy-paste-ready weights explainer command for operator refreshers."""
         return " ".join(["agcli", "explain", "weights"])
@@ -1039,12 +1090,15 @@ class Weights(SdkModule):
             "inspect_validators_command": cls.inspect_validators_help(netuid),
             "inspect_stake_command": cls.inspect_stake_help(netuid),
             "inspect_config_show_command": cls.inspect_config_show_help(),
+            "inspect_config_set_wallet_command": cls.inspect_config_set_wallet_help(),
+            "inspect_config_set_hotkey_command": cls.inspect_config_set_hotkey_help(),
             "inspect_wallet_show_command": cls.inspect_wallet_show_help(),
             "inspect_wallet_current_command": cls.inspect_wallet_current_help(),
             "inspect_wallet_associate_command": cls.inspect_wallet_associate_help(),
             "inspect_wallet_derive_command": cls.inspect_wallet_derive_help(),
             "inspect_wallet_sign_command": cls.inspect_wallet_sign_help(),
             "inspect_wallet_verify_command": cls.inspect_wallet_verify_help(),
+            "inspect_hotkey_address_command": cls.inspect_hotkey_address_help(),
             "inspect_balance_command": cls.inspect_balance_help(),
             "inspect_stake_add_command": cls.inspect_stake_add_help(netuid),
             "inspect_validator_requirements_command": cls.inspect_validator_requirements_help(netuid),
@@ -1052,6 +1106,8 @@ class Weights(SdkModule):
             "inspect_set_param_command": cls.inspect_set_param_help(netuid),
             "inspect_admin_list_command": cls.inspect_admin_list_help(),
             "inspect_admin_raw_command": cls.inspect_admin_raw_help(),
+            "inspect_localnet_scaffold_command": cls.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": cls.inspect_doctor_help(),
             "explain_weights_command": cls.explain_weights_help(),
             "explain_commit_reveal_command": cls.explain_commit_reveal_help(),
             "inspect_registration_cost_command": cls.inspect_registration_cost_help(netuid),
@@ -1221,19 +1277,37 @@ class Weights(SdkModule):
                 "the subnet mode may have changed or the status snapshot may be stale."
             )
 
-        if (
-            cls._pending_commit_window(status_summary) is not None
-            and next_action in {"WAIT", "REVEAL"}
-            and (
-                cls._is_rate_limit_error(error)
-                or cls._is_commit_reveal_required_error(error)
-                or cls._is_commit_reveal_disabled_error(error)
-            )
+        has_pending_window = cls._pending_commit_window(status_summary) is not None
+
+        if has_pending_window and next_action in {"WAIT", "REVEAL"} and (
+            cls._is_rate_limit_error(error)
+            or cls._is_commit_reveal_required_error(error)
+            or cls._is_commit_reveal_disabled_error(error)
         ):
             result["already_pending_recovery_note"] = (
                 "Status already shows a pending commit on-chain, so resubmitting now is unlikely to help. Follow "
                 "recommended_action/recommended_command instead of submitting another direct set or commit until "
                 "that pending commit is revealed or expires."
+            )
+
+        if has_pending_window and next_action == "WAIT" and cls._is_commit_state_error(error):
+            result["pending_commit_reconciliation_note"] = (
+                "Status already shows a pending commit that is still waiting for its reveal window. Keep the current "
+                "commit, poll recommended_command, and only retry reveal after the window opens instead of "
+                "recommitting."
+            )
+        elif has_pending_window and next_action == "REVEAL" and cls._is_commit_state_error(error):
+            result["pending_commit_reconciliation_note"] = (
+                "Status already shows a pending commit ready to reveal. Use recommended_command for the reveal path "
+                "before creating or submitting anything new, and inspect inspect_pending_commits_command if the "
+                "reveal inputs may have drifted."
+            )
+        elif next_action == "NO_PENDING_COMMITS" and cls._is_commit_state_error(error):
+            result["pending_commit_reconciliation_note"] = (
+                "The error came from reveal-side commit state, but the provided status snapshot currently shows no "
+                "pending commit on-chain. Refresh inspect_status_command and inspect_pending_commits_command once to "
+                "confirm that drift, then follow recommended_command instead of retrying a reveal for a commit that "
+                "is no longer visible."
             )
 
         return result
@@ -1354,6 +1428,9 @@ class Weights(SdkModule):
                 "The saved commit hash matches the current pending commit on-chain. Reuse the saved reveal_command "
                 "instead of creating a fresh commit."
             )
+            result["recommended_action"] = "REVEAL"
+            result["recommended_command"] = record["reveal_command"]
+            result["reason"] = "The saved commit still matches the live pending commit and is ready to reveal now."
             if error is None:
                 result["next_step"] = (
                     "Use the saved reveal_command now; the saved commit still matches the current on-chain pending "
@@ -1364,16 +1441,42 @@ class Weights(SdkModule):
                 "The saved commit hash matches the current pending commit on-chain. No recommit is needed yet; wait "
                 "for the reveal window, then reuse the saved reveal_command."
             )
+            result["recommended_action"] = "WAIT"
+            result["recommended_command"] = record["inspect_status_command"]
+            result["ready_command"] = record["reveal_command"]
+            result["reason"] = (
+                "The saved commit still matches the live pending commit, but the reveal window is not open yet."
+            )
+            blocks_until_action = result.get("blocks_until_action")
+            if isinstance(blocks_until_action, int):
+                result["timing_note"] = f"Wait about {blocks_until_action} more blocks, then check status again."
             if error is None:
                 result["next_step"] = (
                     "Wait for the reveal window, then use the saved reveal_command instead of creating a fresh commit."
                 )
+        elif pending_commits == 0:
+            result["recommended_action"] = "RECOMMIT"
+            result["recommended_command"] = record["commit_command"]
+            result["reason"] = (
+                "No matching pending commit is visible on-chain for this saved state, so a fresh commit is required."
+            )
+        elif isinstance(saved_hash, str) and isinstance(pending_hash, str) and not saved_hash_matches_pending_commit:
+            result["recommended_action"] = "INSPECT"
+            result["recommended_command"] = record["inspect_pending_commits_command"]
+            result["reason"] = (
+                "A different pending commit is currently visible on-chain, so inspect it before reusing or replacing "
+                "the saved reveal state."
+            )
 
         if error is None:
             return result
 
+        reveal_too_early_error = any(needle in error for needle in ("RevealTooEarly", "NotInRevealPeriod"))
         missing_commit_error = any(needle in error for needle in ("NoWeightsCommitFound", "Custom error: 50"))
         hash_mismatch_error = any(needle in error for needle in ("InvalidRevealCommitHashNotMatch", "Custom error: 51"))
+        too_many_unrevealed_error = any(
+            needle in error for needle in ("TooManyUnrevealedCommits", "Custom error: 76")
+        )
         expired_commit_error = any(
             needle in error for needle in ("RevealTooLate", "ExpiredWeightCommit", "Custom error: 77")
         )
@@ -1383,7 +1486,18 @@ class Weights(SdkModule):
         ):
             result["stale_state_detected"] = True
 
-        if missing_commit_error:
+        if reveal_too_early_error and saved_hash_matches_pending_commit:
+            if effective_next_action == "WAIT":
+                result["next_step"] = (
+                    "The saved hash already matches the live pending commit. Wait for the reveal window, then retry "
+                    "the saved reveal_command instead of creating a fresh commit."
+                )
+            elif effective_next_action == "REVEAL":
+                result["next_step"] = (
+                    "The saved hash already matches the live pending commit. Retry the exact saved reveal_command "
+                    "instead of creating a fresh commit."
+                )
+        elif missing_commit_error:
             if saved_hash_matches_pending_commit:
                 result["next_step"] = (
                     "The saved hash already matches the live pending commit. Refresh weights status if needed, then "
@@ -1459,6 +1573,49 @@ class Weights(SdkModule):
                     "Compare the saved weights, salt, version_key, and hash with pending_commit before retrying the "
                     "saved reveal_command."
                 )
+        elif too_many_unrevealed_error:
+            if saved_hash_matches_pending_commit:
+                if effective_next_action == "REVEAL":
+                    result["next_step"] = (
+                        "The saved hash still matches one of the pending commits on-chain. Reveal it now with the "
+                        "saved reveal_command before creating any fresh commit."
+                    )
+                elif effective_next_action == "WAIT":
+                    result["next_step"] = (
+                        "The saved hash still matches one of the pending commits on-chain. Wait for its reveal window, "
+                        "then use the saved reveal_command instead of creating a fresh commit."
+                    )
+                else:
+                    result["next_step"] = (
+                        "The saved hash still matches one of the pending commits on-chain. "
+                        "Compare the saved state with pending_commit and reveal that commit "
+                        "before creating anything new."
+                    )
+
+            elif pending_commits == 0:
+                result["on_chain_drift_note"] = (
+                    "No pending commits are visible now, so the overflow likely cleared on-chain after the error was "
+                    "reported."
+                )
+                result["next_step"] = (
+                    "Refresh weights status once more, then create a fresh commit only if no earlier commit remains to "
+                    "reveal."
+                )
+            elif isinstance(saved_hash, str) and isinstance(pending_hash, str):
+                result["on_chain_drift_note"] = (
+                    "Different pending commits are currently occupying the unrevealed queue. Inspect them before "
+                    "reusing or replacing the saved reveal state."
+                )
+                result["next_step"] = (
+                    "Inspect pending_commit.hash and matching_pending_commits before retrying. Reveal or let older "
+                    "commits expire first, then create a fresh commit only if the saved hash is no longer active."
+                )
+            else:
+                result["next_step"] = (
+                    "Inspect pending commits for this hotkey, reveal any still-valid older "
+                    "commit, and only then create a fresh commit if nothing revealable "
+                    "remains."
+                )
         elif expired_commit_error:
             result["on_chain_drift_note"] = (
                 "The saved commit is no longer revealable on-chain. Create a fresh commit and save its new reveal "
@@ -1466,6 +1623,16 @@ class Weights(SdkModule):
             )
             result["next_step"] = (
                 "Create a fresh commit, save its new reveal state, and wait for the next reveal window before retrying."
+            )
+        elif saved_hash_matches_pending_commit and effective_next_action == "REVEAL":
+            result["next_step"] = (
+                "The saved hash already matches the live pending commit. Retry the exact saved reveal_command instead "
+                "of creating a fresh commit."
+            )
+        elif saved_hash_matches_pending_commit and effective_next_action == "WAIT":
+            result["next_step"] = (
+                "The saved hash already matches the live pending commit. Wait for the reveal window, then retry the "
+                "saved reveal_command instead of creating a fresh commit."
             )
 
         return result
@@ -1486,6 +1653,7 @@ class Weights(SdkModule):
             "recovery_reason": (
                 "A previous commit can still be revealed if its original weights and salt are preserved."
             ),
+            "local_validation_tip": cls._local_validation_tip(),
         }
         error_text: str | None = None
         if error is not None:
@@ -1631,7 +1799,8 @@ class Weights(SdkModule):
         """Return stripped raw status text when the original status input was textual."""
         if not isinstance(status, str):
             return None
-        return status.strip()
+        normalized = status.strip()
+        return normalized or None
 
     @classmethod
     def _attach_raw_status(cls, result: dict[str, Any], status: object) -> dict[str, Any]:
@@ -1852,10 +2021,14 @@ class Weights(SdkModule):
                     version_key=version_key,
                 )
                 result["reason"] = "A pending commit is ready to reveal now."
+                result["next_step"] = "Run recommended_command now to reveal the pending commit."
             else:
                 result["reason"] = (
                     "A pending commit is ready to reveal now; provide the original weights and salt "
                     "to build the reveal command."
+                )
+                result["next_step"] = (
+                    "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
                 )
             if isinstance(blocks_until_action, int):
                 result["timing_note"] = (
@@ -1866,6 +2039,9 @@ class Weights(SdkModule):
         if next_action == "RECOMMIT":
             result["reason"] = "A previous pending commit expired, so fresh weights are required."
             if normalized_weights is None:
+                result["next_step"] = (
+                    "Prepare a fresh weights payload, then rerun recommended_command to build the retry command."
+                )
                 return result
             if commit_reveal_enabled and wait:
                 result["recommended_command"] = cls.commit_reveal_help(
@@ -1884,12 +2060,16 @@ class Weights(SdkModule):
                 )
             else:
                 result["recommended_command"] = cls.set_help(netuid, normalized_weights, version_key=version_key)
+            result["next_step"] = "Run recommended_command to submit a fresh weights update."
             return result
 
         if next_action == "NO_PENDING_COMMITS":
             if commit_reveal_enabled:
                 result["reason"] = "No commit is pending and this subnet uses commit-reveal."
                 if normalized_weights is None:
+                    result["next_step"] = (
+                        "Provide fresh weights, then rerun recommended_command to build the next commit command."
+                    )
                     return result
                 if wait or normalized_salt is None:
                     result["recommended_command"] = cls.commit_reveal_help(
@@ -1900,13 +2080,34 @@ class Weights(SdkModule):
                     )
                 else:
                     result["recommended_command"] = cls.commit_help(netuid, normalized_weights, salt=normalized_salt)
+                result["next_step"] = "Run recommended_command to start a fresh commit-reveal weights update."
             else:
                 result["reason"] = "No commit is pending and direct weight setting is available."
                 if normalized_weights is not None:
                     result["recommended_command"] = cls.set_help(netuid, normalized_weights, version_key=version_key)
+                    result["next_step"] = "Run recommended_command to set weights directly."
+                else:
+                    result["next_step"] = (
+                        "Provide fresh weights, then rerun recommended_command to build the direct set command."
+                    )
             return result
 
         result["reason"] = "A pending commit exists but the reveal window is not open yet."
+        if normalized_weights is not None and normalized_salt is not None:
+            result["ready_command"] = cls.reveal_help(
+                netuid,
+                normalized_weights,
+                normalized_salt,
+                version_key=version_key,
+            )
+            result["next_step"] = (
+                "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+            )
+        else:
+            result["next_step"] = (
+                "Wait for the reveal window, then rerun recommended_command. Provide the original weights and salt "
+                "to build the reveal command once reveal opens."
+            )
         if isinstance(blocks_until_action, int):
             result["timing_note"] = f"Wait about {blocks_until_action} more blocks, then check status again."
         return result
@@ -1968,10 +2169,14 @@ class Weights(SdkModule):
                     version_key=version_key,
                 )
                 result["reason"] = "A pending mechanism commit is ready to reveal now."
+                result["next_step"] = "Run recommended_command now to reveal the pending mechanism commit."
             else:
                 result["reason"] = (
                     "A pending mechanism commit is ready to reveal now; provide the original weights and salt "
                     "to build the reveal command."
+                )
+                result["next_step"] = (
+                    "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
                 )
             if isinstance(blocks_until_action, int):
                 result["timing_note"] = (
@@ -1986,10 +2191,14 @@ class Weights(SdkModule):
                     result["reason"] = (
                         "A previous pending mechanism commit expired, so a fresh mechanism commit is required."
                     )
+                    result["next_step"] = "Run recommended_command to submit a fresh mechanism commit."
                 else:
                     result["reason"] = (
                         "A previous pending mechanism commit expired, so a fresh precomputed mechanism hash is "
                         "required before retrying."
+                    )
+                    result["next_step"] = (
+                        "Compute a fresh mechanism hash, then rerun recommended_command to build the retry command."
                     )
             else:
                 result["reason"] = (
@@ -2002,6 +2211,12 @@ class Weights(SdkModule):
                         normalized_weights,
                         version_key=version_key,
                     )
+                    result["next_step"] = "Run recommended_command to set mechanism weights directly."
+                else:
+                    result["next_step"] = (
+                        "Prepare a fresh mechanism weights payload, then rerun recommended_command to build the direct "
+                        "set command."
+                    )
             return result
 
         if next_action == "NO_PENDING_COMMITS":
@@ -2009,10 +2224,14 @@ class Weights(SdkModule):
                 if normalized_hash is not None:
                     result["recommended_command"] = cls.commit_mechanism_help(netuid, mechanism_id, normalized_hash)
                     result["reason"] = "No mechanism commit is pending and this subnet uses commit-reveal."
+                    result["next_step"] = "Run recommended_command to start a fresh mechanism commit."
                 else:
                     result["reason"] = (
                         "No mechanism commit is pending and this subnet uses commit-reveal; provide the precomputed "
                         "mechanism hash to build the commit command."
+                    )
+                    result["next_step"] = (
+                        "Compute a mechanism hash, then rerun recommended_command to build the next commit command."
                     )
             else:
                 result["reason"] = "No mechanism commit is pending and direct mechanism weight setting is available."
@@ -2023,9 +2242,31 @@ class Weights(SdkModule):
                         normalized_weights,
                         version_key=version_key,
                     )
+                    result["next_step"] = "Run recommended_command to set mechanism weights directly."
+                else:
+                    result["next_step"] = (
+                        "Prepare a fresh mechanism weights payload, then rerun recommended_command to build the direct "
+                        "set command."
+                    )
             return result
 
         result["reason"] = "A pending mechanism commit exists but the reveal window is not open yet."
+        if normalized_weights is not None and normalized_salt is not None:
+            result["ready_command"] = cls.reveal_mechanism_help(
+                netuid,
+                mechanism_id,
+                normalized_weights,
+                normalized_salt,
+                version_key=version_key,
+            )
+            result["next_step"] = (
+                "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+            )
+        else:
+            result["next_step"] = (
+                "Wait for the reveal window, then rerun recommended_command. Provide the original weights and salt "
+                "to build the reveal command once reveal opens."
+            )
         if isinstance(blocks_until_action, int):
             result["timing_note"] = f"Wait about {blocks_until_action} more blocks, then check status again."
         return result
@@ -2082,10 +2323,14 @@ class Weights(SdkModule):
                     version_key=version_key,
                 )
                 result["reason"] = "A pending timelocked commit is ready to reveal now."
+                result["next_step"] = "Run recommended_command now to reveal the pending timelocked commit."
             else:
                 result["reason"] = (
                     "A pending timelocked commit is ready to reveal now; provide the original weights and salt "
                     "to build the reveal command."
+                )
+                result["next_step"] = (
+                    "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
                 )
             if isinstance(blocks_until_action, int):
                 result["timing_note"] = (
@@ -2105,15 +2350,25 @@ class Weights(SdkModule):
                     result["reason"] = (
                         "A previous pending timelocked commit expired, so a fresh timelocked commit is required."
                     )
+                    result["next_step"] = "Run recommended_command to submit a fresh timelocked commit."
                 else:
                     result["reason"] = (
                         "A previous pending timelocked commit expired, so fresh weights and a drand round are "
                         "required before retrying."
                     )
+                    result["next_step"] = (
+                        "Prepare fresh weights and a drand round, then rerun recommended_command to build the retry "
+                        "command."
+                    )
             else:
                 result["reason"] = "The previous timelocked commit expired and direct weight setting is available."
                 if normalized_weights is not None:
                     result["recommended_command"] = cls.set_help(netuid, normalized_weights, version_key=version_key)
+                    result["next_step"] = "Run recommended_command to set weights directly."
+                else:
+                    result["next_step"] = (
+                        "Prepare fresh weights, then rerun recommended_command to build the direct set command."
+                    )
             return result
 
         if next_action == "NO_PENDING_COMMITS":
@@ -2126,18 +2381,43 @@ class Weights(SdkModule):
                         salt=normalized_salt,
                     )
                     result["reason"] = "No timelocked commit is pending and this subnet uses commit-reveal."
+                    result["next_step"] = "Run recommended_command to start a fresh timelocked commit."
                 else:
                     result["reason"] = (
                         "No timelocked commit is pending and this subnet uses commit-reveal; provide weights and a "
                         "drand round to build the next commit command."
                     )
+                    result["next_step"] = (
+                        "Prepare weights and a drand round, then rerun recommended_command to build the next commit "
+                        "command."
+                    )
             else:
                 result["reason"] = "No timelocked commit is pending and direct weight setting is available."
                 if normalized_weights is not None:
                     result["recommended_command"] = cls.set_help(netuid, normalized_weights, version_key=version_key)
+                    result["next_step"] = "Run recommended_command to set weights directly."
+                else:
+                    result["next_step"] = (
+                        "Prepare fresh weights, then rerun recommended_command to build the direct set command."
+                    )
             return result
 
         result["reason"] = "A pending timelocked commit exists but the reveal window is not open yet."
+        if normalized_weights is not None and normalized_salt is not None:
+            result["ready_command"] = cls.reveal_help(
+                netuid,
+                normalized_weights,
+                normalized_salt,
+                version_key=version_key,
+            )
+            result["next_step"] = (
+                "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+            )
+        else:
+            result["next_step"] = (
+                "Wait for the reveal window, then rerun recommended_command. Provide the original weights and salt "
+                "to build the reveal command once reveal opens."
+            )
         if isinstance(blocks_until_action, int):
             result["timing_note"] = f"Wait about {blocks_until_action} more blocks, then check status again."
         return result
@@ -2231,8 +2511,14 @@ class Weights(SdkModule):
             ),
             (
                 ("Custom error: 16",),
-                "The runtime returned a generic reveal-side custom error.",
-                "Check pending commits, reveal timing, and that weights, salt, and version_key match the commit.",
+                (
+                    "The runtime returned a generic reveal-side custom error that often masks "
+                    "another commit-state condition."
+                ),
+                (
+                    "Check weights status and pending commits first; if the commit is still "
+                    "WAITING or READY, wait or retry the same reveal instead of recommitting."
+                ),
             ),
         ]
         for needles, likely_cause, next_step in rules:
@@ -2578,12 +2864,911 @@ class Weights(SdkModule):
                 hotkey=hotkey,
             ),
             **cls._adjacent_workflows_fields(netuid),
+            "local_validation_tip": cls._local_validation_tip(),
             "status_note": cls._status_note(),
             "show_note": cls._show_note(),
             "pending_commits_note": cls._pending_commits_note(),
             "hyperparams_note": cls._hyperparams_note(),
             "set_weights_note": cls._set_weights_note(),
         }
+
+    @staticmethod
+    def _has_payload(payload: object | None) -> bool:
+        """Return whether a workflow payload is meaningfully present."""
+        if payload is None:
+            return False
+        if isinstance(payload, str):
+            return bool(payload.strip())
+        if isinstance(payload, (list, tuple, set, dict)):
+            return bool(payload)
+        return True
+
+    @staticmethod
+    def _validation_status(validated_reads: list[str]) -> str:
+        """Return a compact workflow status for weights validation helpers."""
+        if len(validated_reads) == 4:
+            return "ready"
+        if validated_reads:
+            return "partial"
+        return "missing"
+
+    @classmethod
+    def _validation_summary(
+        cls,
+        netuid_arg: str,
+        validated_reads: list[str],
+        missing_reads: list[str],
+    ) -> str:
+        """Return a compact text summary for weights validation helpers."""
+        if not validated_reads:
+            return (
+                f"Weights verification on subnet {netuid_arg} still needs status, hyperparams, show, and "
+                "pending_commits output."
+            )
+        if missing_reads:
+            return (
+                f"Weights verification on subnet {netuid_arg} has reads {', '.join(validated_reads)}; "
+                f"still missing {', '.join(missing_reads)}."
+            )
+        return (
+            f"Weights verification on subnet {netuid_arg} is ready: status, hyperparams, show, and "
+            "pending_commits reads are present."
+        )
+
+    @classmethod
+    def _validation_workflow_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+    ) -> dict[str, Any]:
+        """Return the operator workflow context shared by weights validation helpers."""
+        workflow = cls.serve_prerequisite_help(netuid, wallet=wallet, hotkey=hotkey)
+        if weights is not None:
+            normalized_weights = cls._weights_arg(weights)
+            workflow["normalized_weights"] = normalized_weights
+            workflow["set"] = cls.set_help(
+                netuid,
+                normalized_weights,
+                version_key=version_key,
+                wallet=wallet,
+                hotkey=hotkey,
+            )
+            if salt is not None:
+                normalized_salt = cls._salt_arg(salt)
+                workflow["commit"] = cls.commit_help(
+                    netuid,
+                    normalized_weights,
+                    salt=normalized_salt,
+                    wallet=wallet,
+                    hotkey=hotkey,
+                )
+                workflow["reveal"] = cls.reveal_help(
+                    netuid,
+                    normalized_weights,
+                    normalized_salt,
+                    version_key=version_key,
+                    wallet=wallet,
+                    hotkey=hotkey,
+                )
+                workflow["commit_reveal"] = cls.commit_reveal_help(
+                    netuid,
+                    normalized_weights,
+                    version_key=version_key,
+                    wait=wait,
+                    wallet=wallet,
+                    hotkey=hotkey,
+                )
+        return workflow
+
+    @classmethod
+    def _next_validation_step(
+        cls,
+        netuid: int,
+        workflow: dict[str, Any],
+        missing_reads: list[str],
+        *,
+        status_summary: Mapping[str, Any] | None = None,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+    ) -> str:
+        """Return the next command operators should run for weights validation."""
+        if "status" in missing_reads:
+            return str(workflow["status"])
+        if "hyperparams" in missing_reads:
+            return str(workflow["hyperparams"])
+        if "show" in missing_reads:
+            return str(workflow["show"])
+        if "pending_commits" in missing_reads:
+            return str(workflow["pending_commits"])
+        if status_summary is None:
+            return str(workflow["status"])
+        guidance = cls._next_action_guidance(
+            netuid,
+            status_summary,
+            weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+        )
+        return str(guidance["recommended_command"])
+
+    @classmethod
+    def _summary_mapping_or_none(cls, status: Mapping[str, Any]) -> dict[str, Any] | None:
+        """Return a normalized status summary when the mapping is already summary-shaped."""
+        if not any(key in status for key in ("current_block", "pending_statuses", "next_action", "commit_windows")):
+            return None
+
+        current_block = cls._status_int("current_block", status.get("current_block"))
+
+        commit_reveal_enabled = status.get("commit_reveal_enabled")
+        if not isinstance(commit_reveal_enabled, bool):
+            raise ValueError("status summary commit_reveal_enabled must be a boolean")
+
+        reveal_period_epochs = cls._status_int("reveal_period_epochs", status.get("reveal_period_epochs"))
+
+        pending_commits = status.get("pending_commits")
+        if isinstance(pending_commits, bool) or not isinstance(pending_commits, int):
+            raise ValueError("status summary pending_commits must be an integer")
+
+        pending_statuses_value = status.get("pending_statuses")
+        if not isinstance(pending_statuses_value, list):
+            raise ValueError("status summary pending_statuses must be a list")
+        pending_statuses: list[str] = []
+        for index, entry in enumerate(pending_statuses_value, start=1):
+            if not isinstance(entry, str):
+                raise ValueError(f"status summary pending_statuses[{index}] must be a string")
+            pending_statuses.append(entry.strip() or "UNKNOWN")
+
+        next_action = status.get("next_action")
+        if not isinstance(next_action, str):
+            raise ValueError("status summary next_action must be a string")
+
+        commit_windows_value = status.get("commit_windows")
+        if not isinstance(commit_windows_value, list):
+            raise ValueError("status summary commit_windows must be a list")
+        commit_windows: list[dict[str, Any]] = []
+        for index, entry in enumerate(commit_windows_value, start=1):
+            if not isinstance(entry, Mapping):
+                raise ValueError(f"status summary commit_windows[{index}] must be a mapping")
+            status_value = entry.get("status")
+            if not isinstance(status_value, str):
+                raise ValueError(f"status summary commit_windows[{index}].status must be a string")
+            normalized_entry: dict[str, Any] = {
+                "index": index
+                if "index" not in entry
+                else cls._status_int(f"commit_windows[{index}].index", entry.get("index")),
+                "status": status_value.strip() or "UNKNOWN",
+            }
+            for field in ("commit_block", "first_reveal", "last_reveal", "blocks_until_action"):
+                value = entry.get(field)
+                if value is None:
+                    continue
+                if isinstance(value, bool) or not isinstance(value, int):
+                    raise ValueError(f"status summary commit_windows[{index}].{field} must be an integer when present")
+                normalized_entry[field] = value
+            hash_value = entry.get("hash")
+            if hash_value is not None:
+                if not isinstance(hash_value, str):
+                    raise ValueError(f"status summary commit_windows[{index}].hash must be a string when present")
+                normalized_entry["hash"] = hash_value
+            commit_windows.append(normalized_entry)
+
+        return {
+            "current_block": current_block,
+            "commit_reveal_enabled": commit_reveal_enabled,
+            "reveal_period_epochs": reveal_period_epochs,
+            "pending_commits": pending_commits,
+            "pending_statuses": pending_statuses,
+            "next_action": next_action,
+            "commit_windows": commit_windows,
+        }
+
+    @classmethod
+    def _status_summary_or_none(cls, status: Mapping[str, Any] | str | None) -> dict[str, Any] | None:
+        """Return normalized status summary when a non-empty status payload is supplied."""
+        if status is None:
+            return None
+        if isinstance(status, str):
+            normalized_status = status.strip()
+            if not normalized_status:
+                return None
+            return cls.status_text_help(normalized_status)
+        summary = cls._summary_mapping_or_none(status)
+        if summary is not None:
+            return summary
+        return cls._extract_status_summary(status)
+
+    @classmethod
+    def _status_input_error(cls, status: Mapping[str, Any] | str | None) -> ValueError | None:
+        """Return a status-specific validation error without treating blank text as present."""
+        if status is None:
+            return None
+        if isinstance(status, str):
+            if not status.strip():
+                return None
+            try:
+                cls.status_text_help(status)
+            except ValueError as exc:
+                return exc
+            return None
+        try:
+            summary = cls._summary_mapping_or_none(status)
+            if summary is None:
+                cls._extract_status_summary(status)
+        except ValueError as exc:
+            return exc
+        return None
+
+    @classmethod
+    def _workflow_snapshot_keys(cls) -> tuple[str, ...]:
+        """Return workflow keys copied onto snapshot and validation helpers."""
+        return (
+            "status",
+            "show",
+            "pending_commits",
+            "hyperparams",
+            "normalized_weights",
+            "set",
+            "commit_reveal",
+            "commit",
+            "reveal",
+        )
+
+    @classmethod
+    def _workflow_selected_fields(cls, workflow: Mapping[str, Any]) -> dict[str, Any]:
+        """Return a compact workflow subset for top-level validation helper output."""
+        return {key: workflow[key] for key in cls._workflow_snapshot_keys() if key in workflow}
+
+    @classmethod
+    def _next_action_snapshot_keys(cls) -> tuple[str, ...]:
+        """Return next-action keys that snapshots should surface directly."""
+        return (
+            "recommended_action",
+            "recommended_command",
+            "reason",
+            "next_step",
+            "pending_commit",
+            "blocks_until_action",
+            "timing_note",
+            "ready_command",
+            "normalized_weights",
+        )
+
+    @classmethod
+    def _next_action_snapshot_fields(cls, validation: Mapping[str, Any]) -> dict[str, Any]:
+        """Return the next-action subset that snapshots should surface directly."""
+        return {key: validation[key] for key in cls._next_action_snapshot_keys() if key in validation}
+
+    @staticmethod
+    def _local_validation_tip() -> str:
+        """Return a concise reminder for reproducing weights flows on a local chain."""
+        return (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+
+    @classmethod
+    def _weights_validation_result(
+        cls,
+        netuid: int,
+        workflow: dict[str, Any],
+        validated_reads: list[str],
+        missing_reads: list[str],
+        *,
+        status_summary: Mapping[str, Any] | None = None,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+    ) -> dict[str, Any]:
+        """Build the shared weights validation payload from normalized inputs."""
+        result: dict[str, Any] = {
+            "netuid": int(cls._netuid_arg(netuid)),
+            **dict(workflow),
+            "validated_reads": validated_reads,
+            "missing_reads": missing_reads,
+            "validation_status": cls._validation_status(validated_reads),
+            "validation_summary": cls._validation_summary(str(workflow["netuid"]), validated_reads, missing_reads),
+            "local_validation_tip": cls._local_validation_tip(),
+            "workflow": workflow,
+        }
+        result["next_validation_step"] = cls._next_validation_step(
+            netuid,
+            workflow,
+            missing_reads,
+            status_summary=status_summary,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+        )
+        if status_summary is not None:
+            result["status_summary"] = dict(status_summary)
+            result.update(
+                cls._next_action_guidance(
+                    netuid,
+                    status_summary,
+                    weights,
+                    salt=salt,
+                    version_key=version_key,
+                    wait=wait,
+                )
+            )
+        return result
+
+    @classmethod
+    def _weights_validation_from_inputs(
+        cls,
+        netuid: int,
+        workflow: dict[str, Any],
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Build weights validation output from potentially sparse raw inputs."""
+        status_error = cls._status_input_error(status)
+        if status_error is not None:
+            raise status_error
+        status_summary = cls._status_summary_or_none(status)
+        read_payloads = (
+            ("status", status_summary),
+            ("hyperparams", hyperparams),
+            ("show", show),
+            ("pending_commits", pending_commits),
+        )
+        validated_reads = [name for name, payload in read_payloads if cls._has_payload(payload)]
+        missing_reads = [
+            name for name in ("status", "hyperparams", "show", "pending_commits") if name not in validated_reads
+        ]
+        return cls._weights_validation_result(
+            netuid,
+            workflow,
+            validated_reads,
+            missing_reads,
+            status_summary=status_summary,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+        )
+
+    @classmethod
+    def weights_validation_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a compact validation summary for supplied weights reads."""
+        workflow = cls._validation_workflow_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+        )
+        return cls._weights_validation_from_inputs(
+            netuid,
+            workflow,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def validation_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for weights_validation_help."""
+        return cls.weights_validation_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def validation_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Backward-compatible alias for weights_validation_text."""
+        return cls.weights_validation_text(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for weights_snapshot_help."""
+        return cls.weights_snapshot_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Backward-compatible alias for weights_snapshot_text."""
+        return cls.weights_snapshot_text(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_validation_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Operator-facing alias for weights_validation_help."""
+        return cls.weights_validation_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Operator-facing alias for weights_snapshot_help."""
+        return cls.weights_snapshot_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_validation_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Operator-facing alias for weights_validation_text."""
+        return cls.weights_validation_text(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Operator-facing alias for weights_snapshot_text."""
+        return cls.weights_snapshot_text(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_workflow_validation_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Long-form alias for weights_validation_help."""
+        return cls.weights_validation_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_workflow_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Long-form alias for weights_snapshot_help."""
+        return cls.weights_snapshot_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_workflow_validation_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Long-form alias for weights_validation_text."""
+        return cls.weights_validation_text(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def operator_workflow_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Long-form alias for weights_snapshot_text."""
+        return cls.weights_snapshot_text(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+
+    @classmethod
+    def weights_validation_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Return a concise text summary for supplied weights reads."""
+        summary = cls.weights_validation_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+        return f"{summary['validation_summary']} Local: {summary['local_validation_tip']}"
+
+    @classmethod
+    def weights_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a practical operator snapshot combining weights workflow and validation fields."""
+        validation = cls.weights_validation_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+        workflow = dict(validation["workflow"])
+        snapshot = dict(workflow)
+        snapshot["workflow"] = workflow
+        snapshot["validation_status"] = validation["validation_status"]
+        snapshot["validation_summary"] = validation["validation_summary"]
+        snapshot["local_validation_tip"] = validation["local_validation_tip"]
+        snapshot["validated_reads"] = validation["validated_reads"]
+        snapshot["missing_reads"] = validation["missing_reads"]
+        snapshot["next_validation_step"] = validation["next_validation_step"]
+        if "status_summary" in validation:
+            snapshot["status_summary"] = validation["status_summary"]
+        snapshot.update(cls._next_action_snapshot_fields(validation))
+        return snapshot
+
+    @classmethod
+    def weights_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        weights: WeightsInput | None = None,
+        salt: CommitSaltInput | None = None,
+        version_key: int | None = None,
+        wait: bool = False,
+        wallet: str | None = None,
+        hotkey: str | None = None,
+        status: Mapping[str, Any] | str | None = None,
+        show: object | None = None,
+        hyperparams: object | None = None,
+        pending_commits: object | None = None,
+    ) -> str:
+        """Return a concise operator snapshot text for supplied weights reads."""
+        snapshot = cls.weights_snapshot_help(
+            netuid,
+            weights=weights,
+            salt=salt,
+            version_key=version_key,
+            wait=wait,
+            wallet=wallet,
+            hotkey=hotkey,
+            status=status,
+            show=show,
+            hyperparams=hyperparams,
+            pending_commits=pending_commits,
+        )
+        return (
+            f"{snapshot['validation_summary']} Next: {snapshot['next_validation_step']} "
+            f"Local: {snapshot['local_validation_tip']}"
+        )
+
 
     @classmethod
     def status_help(cls, netuid: int, *, wallet: str | None = None, hotkey: str | None = None) -> str:
@@ -2653,10 +3838,12 @@ class Weights(SdkModule):
             "pending_commits": cls.inspect_pending_commits_help(netuid),
             "hyperparams": cls.inspect_version_key_help(netuid),
             **cls._adjacent_workflows_fields(netuid),
+            "local_validation_tip": cls._local_validation_tip(),
             "status_note": cls._status_note(),
             "show_note": cls._show_note(),
             "pending_commits_note": cls._pending_commits_note(),
             "hyperparams_note": cls._hyperparams_note(),
+            "set_weights_note": cls._set_weights_note(),
         }
 
     @classmethod
@@ -2681,14 +3868,18 @@ class Weights(SdkModule):
         weights: WeightsInput,
         salt: CommitSaltInput,
         version_key: int | None = None,
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         """Return normalized helpers for a manual commit/reveal workflow."""
-        helpers = cls.workflow_help(netuid, weights, salt, version_key=version_key)
+        normalized_weights = cls._weights_arg(weights)
+        normalized_salt = cls._salt_arg(salt)
         return {
-            "normalized_weights": helpers["normalized_weights"],
-            "commit": helpers["commit"],
-            "reveal": helpers["reveal"],
-            "status": helpers["status"],
+            "normalized_weights": normalized_weights,
+            "commit": cls.commit_help(netuid, normalized_weights, salt=normalized_salt),
+            "reveal": cls.reveal_help(netuid, normalized_weights, normalized_salt, version_key=version_key),
+            "status": cls.status_help(netuid),
+            "inspect_localnet_scaffold_command": cls.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": cls.inspect_doctor_help(),
+            "local_validation_tip": cls._local_validation_tip(),
         }
 
     @classmethod
@@ -2781,6 +3972,9 @@ class Weights(SdkModule):
         return {
             "status": cls.status_help(netuid),
             "round": int(cls._round_arg(round)),
+            "inspect_localnet_scaffold_command": cls.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": cls.inspect_doctor_help(),
+            "local_validation_tip": cls._local_validation_tip(),
         }
 
     @classmethod
@@ -2805,6 +3999,9 @@ class Weights(SdkModule):
                 hash_help["normalized_salt"],
                 version_key=version_key,
             ),
+            "inspect_localnet_scaffold_command": cls.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": cls.inspect_doctor_help(),
+            "local_validation_tip": cls._local_validation_tip(),
         }
 
     @classmethod
@@ -2835,6 +4032,9 @@ class Weights(SdkModule):
                 hash_help["normalized_salt"],
                 version_key=version_key,
             ),
+            "inspect_localnet_scaffold_command": cls.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": cls.inspect_doctor_help(),
+            "local_validation_tip": cls._local_validation_tip(),
         }
 
     @classmethod
@@ -2879,6 +4079,9 @@ class Weights(SdkModule):
                 normalized_salt,
                 version_key=version_key,
             ),
+            "inspect_localnet_scaffold_command": cls.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": cls.inspect_doctor_help(),
+            "local_validation_tip": cls._local_validation_tip(),
         }
 
     @classmethod
@@ -2897,6 +4100,9 @@ class Weights(SdkModule):
             "status": cls.status_help(netuid),
             "set": cls.set_help(netuid, normalized_weights, version_key=version_key),
             "round": int(cls._round_arg(round)),
+            "inspect_localnet_scaffold_command": cls.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": cls.inspect_doctor_help(),
+            "local_validation_tip": cls._local_validation_tip(),
         }
         if salt is None:
             return helpers
@@ -2931,7 +4137,10 @@ class Weights(SdkModule):
             "likely_cause": cls._troubleshooting_guidance(error_text)[0],
             "next_step": cls._troubleshooting_guidance(error_text)[1],
             "status": cls.status_help(netuid),
+            "local_validation_tip": cls._local_validation_tip(),
         }
+        if status is not None:
+            result = cls._attach_raw_status(result, status)
         summary: dict[str, Any] | None = None
         if status is not None:
             summary = cls._extract_status_summary(status)
@@ -2989,9 +4198,10 @@ class Weights(SdkModule):
     ) -> dict[str, Any]:
         """Return the next recommended mechanism command from a provided status payload."""
         summary = cls._extract_status_summary(status)
-        return {
+        result = {
             "status": cls.status_help(netuid),
             "status_summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
             **cls._mechanism_next_action_guidance(
                 netuid,
                 mechanism_id,
@@ -3002,6 +4212,7 @@ class Weights(SdkModule):
                 version_key=version_key,
             ),
         }
+        return cls._attach_raw_status(result, status)
 
     @classmethod
     def troubleshoot_timelocked_help(
@@ -3021,7 +4232,10 @@ class Weights(SdkModule):
             "likely_cause": cls._troubleshooting_guidance(error_text)[0],
             "next_step": cls._troubleshooting_guidance(error_text)[1],
             "status": cls.status_help(netuid),
+            "local_validation_tip": cls._local_validation_tip(),
         }
+        if status is not None:
+            result = cls._attach_raw_status(result, status)
         summary: dict[str, Any] | None = None
         if status is not None:
             summary = cls._extract_status_summary(status)
@@ -3073,9 +4287,10 @@ class Weights(SdkModule):
     ) -> dict[str, Any]:
         """Return the next recommended timelocked command from a provided status payload."""
         summary = cls._extract_status_summary(status)
-        return {
+        result = {
             "status": cls.status_help(netuid),
             "status_summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
             **cls._timelocked_next_action_guidance(
                 netuid,
                 summary,
@@ -3085,6 +4300,7 @@ class Weights(SdkModule):
                 version_key=version_key,
             ),
         }
+        return cls._attach_raw_status(result, status)
 
     @classmethod
     def troubleshoot_help(
@@ -3105,6 +4321,7 @@ class Weights(SdkModule):
             "likely_cause": likely_cause,
             "next_step": next_step,
             "status": status_command,
+            "local_validation_tip": cls._local_validation_tip(),
         }
         summary: dict[str, Any] | None = None
         if status is not None:
@@ -3170,11 +4387,16 @@ class Weights(SdkModule):
         return self.status_text(netuid)
 
     def status_summary(self, netuid: int) -> dict[str, Any]:
-        """Run `weights status` and return a normalized summary for agents/operators."""
+        """Run `weights status` and return a normalized summary plus concrete next-step guidance."""
         status = self._live_status_input(netuid)
+        summary = self._extract_status_summary(status)
         return {
             "status": self.status_help(netuid),
-            **self._extract_status_summary(status),
+            "inspect_localnet_scaffold_command": self.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": self.inspect_doctor_help(),
+            "local_validation_tip": self._local_validation_tip(),
+            **summary,
+            **self._next_action_guidance(netuid, summary),
         }
 
     def status_text(self, netuid: int) -> str:
@@ -3182,31 +4404,44 @@ class Weights(SdkModule):
         return self._run_raw(["weights", "status", "--netuid", self._netuid_arg(netuid)])
 
     def status_summary_text(self, netuid: int) -> dict[str, Any]:
-        """Run human-readable `weights status` and normalize it into a structured summary."""
+        """Run human-readable `weights status` and return a structured summary plus concrete next-step guidance."""
         status_text = self.status_text(netuid)
+        summary = self._extract_status_summary(status_text)
         return {
             "status": self.status_help(netuid),
-            **self._extract_status_summary(status_text),
+            "inspect_localnet_scaffold_command": self.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": self.inspect_doctor_help(),
+            "local_validation_tip": self._local_validation_tip(),
+            **summary,
+            **self._next_action_guidance(netuid, summary),
         }
 
     def status_runbook(self, netuid: int) -> dict[str, Any]:
-        """Return raw status text together with a normalized machine-friendly summary."""
+        """Return raw status text plus a normalized summary and next-step guidance."""
         status_text = self.status_text(netuid)
+        summary = self._extract_status_summary(status_text)
         return {
             "status": self.status_help(netuid),
             "raw_status": status_text,
-            "summary": self._extract_status_summary(status_text),
+            "summary": summary,
+            "inspect_localnet_scaffold_command": self.inspect_localnet_scaffold_help(),
+            "inspect_doctor_command": self.inspect_doctor_help(),
+            "local_validation_tip": self._local_validation_tip(),
+            **self._next_action_guidance(netuid, summary),
         }
 
     def status_runbook_json(self, netuid: int) -> dict[str, Any]:
-        """Return JSON status plus a normalized summary when machine-readable output is preferred."""
+        """Return JSON status plus a normalized summary and next-step guidance."""
         status = self.status(netuid)
         if not isinstance(status, Mapping):
             raise ValueError("weights status output must be a mapping")
+        summary = self._extract_status_summary(status)
         return {
             "status": self.status_help(netuid),
             "raw_status": status,
-            "summary": self._extract_status_summary(status),
+            "summary": summary,
+            "local_validation_tip": self._local_validation_tip(),
+            **self._next_action_guidance(netuid, summary),
         }
 
     @classmethod
@@ -3217,10 +4452,14 @@ class Weights(SdkModule):
     @classmethod
     def status_runbook_help(cls, netuid: int, status: Mapping[str, Any] | str) -> dict[str, Any]:
         """Build a reusable runbook from provided status payloads or status text."""
+        summary = cls._extract_status_summary(status)
+        raw_status: Mapping[str, Any] | str = cls._status_raw_text(status) or status
         return {
             "status": cls.status_help(netuid),
-            "raw_status": status,
-            "summary": cls._extract_status_summary(status),
+            "raw_status": raw_status,
+            "summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
+            **cls._next_action_guidance(netuid, summary),
         }
 
     @classmethod
@@ -3241,10 +4480,13 @@ class Weights(SdkModule):
         normalized_status = status.strip()
         if not normalized_status:
             raise ValueError("status text cannot be empty")
+        summary = cls._extract_status_summary(normalized_status)
         return {
             "status": cls.status_help(netuid),
             "raw_status": normalized_status,
-            "summary": cls._extract_status_summary(normalized_status),
+            "summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
+            **cls._next_action_guidance(netuid, summary),
         }
 
     @classmethod
@@ -3261,8 +4503,9 @@ class Weights(SdkModule):
         summary = cls.status_text_help(status)
         return {
             "status": cls.status_help(netuid),
-            "raw_status": status.strip(),
+            "raw_status": cls._status_raw_text(status),
             "status_summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
             **cls._next_action_guidance(
                 netuid,
                 summary,
@@ -3284,7 +4527,11 @@ class Weights(SdkModule):
         version_key: int | None = None,
     ) -> dict[str, Any]:
         """Return troubleshooting guidance from raw human-readable status text."""
-        normalized_status = status.strip() if isinstance(status, str) else status
+        if not isinstance(status, str):
+            raise ValueError("status text must be a string")
+        normalized_status = status.strip()
+        if not normalized_status:
+            raise ValueError("status text cannot be empty")
         return cls.troubleshoot_help(
             netuid,
             error,
@@ -3309,8 +4556,9 @@ class Weights(SdkModule):
         summary = cls.status_text_help(status)
         return {
             "status": cls.status_help(netuid),
-            "raw_status": status.strip(),
+            "raw_status": cls._status_raw_text(status),
             "status_summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
             **cls._mechanism_next_action_guidance(
                 netuid,
                 mechanism_id,
@@ -3361,8 +4609,9 @@ class Weights(SdkModule):
         summary = cls.status_text_help(status)
         return {
             "status": cls.status_help(netuid),
-            "raw_status": status.strip(),
+            "raw_status": cls._status_raw_text(status),
             "status_summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
             **cls._timelocked_next_action_guidance(
                 netuid,
                 summary,
@@ -3528,8 +4777,9 @@ class Weights(SdkModule):
             "likely_cause": likely_cause,
             "next_step": next_step,
             "status": self.status_help(netuid),
-            "raw_status": status_text,
+            "raw_status": self._status_raw_text(status_text),
             "status_summary": summary,
+            "local_validation_tip": self._local_validation_tip(),
             **self._next_action_guidance(netuid, summary),
         }
 
@@ -3552,8 +4802,9 @@ class Weights(SdkModule):
             "likely_cause": likely_cause,
             "next_step": next_step,
             "status": self.status_help(netuid),
-            "raw_status": status_text,
+            "raw_status": self._status_raw_text(status_text),
             "status_summary": summary,
+            "local_validation_tip": self._local_validation_tip(),
             **self._mechanism_next_action_guidance(
                 netuid,
                 mechanism_id,
@@ -3583,8 +4834,9 @@ class Weights(SdkModule):
             "likely_cause": likely_cause,
             "next_step": next_step,
             "status": self.status_help(netuid),
-            "raw_status": status_text,
+            "raw_status": self._status_raw_text(status_text),
             "status_summary": summary,
+            "local_validation_tip": self._local_validation_tip(),
             **self._timelocked_next_action_guidance(
                 netuid,
                 summary,
@@ -3607,9 +4859,10 @@ class Weights(SdkModule):
     ) -> dict[str, Any]:
         """Return the next recommended command from a provided status payload."""
         summary = cls._extract_status_summary(status)
-        return {
+        result = {
             "status": cls.status_help(netuid),
             "status_summary": summary,
+            "local_validation_tip": cls._local_validation_tip(),
             **cls._next_action_guidance(
                 netuid,
                 summary,
@@ -3619,6 +4872,7 @@ class Weights(SdkModule):
                 wait=wait,
             ),
         }
+        return cls._attach_raw_status(result, status)
 
     def next_action(
         self,
@@ -3671,6 +4925,7 @@ class Weights(SdkModule):
             "next_step": next_step,
             "status": self.status_help(netuid),
             "status_summary": summary,
+            "local_validation_tip": self._local_validation_tip(),
             **self._next_action_guidance(netuid, summary),
         }
         return self._attach_raw_status(result, status)
@@ -3695,6 +4950,7 @@ class Weights(SdkModule):
             "next_step": next_step,
             "status": self.status_help(netuid),
             "status_summary": summary,
+            "local_validation_tip": self._local_validation_tip(),
             **self._mechanism_next_action_guidance(
                 netuid,
                 mechanism_id,
@@ -3726,6 +4982,7 @@ class Weights(SdkModule):
             "next_step": next_step,
             "status": self.status_help(netuid),
             "status_summary": summary,
+            "local_validation_tip": self._local_validation_tip(),
             **self._timelocked_next_action_guidance(
                 netuid,
                 summary,

@@ -231,18 +231,22 @@ class TestAdmin:
 
     def test_hyperparameter_workflow_help_base(self, admin):
         helpers = admin.hyperparameter_workflow_help(9)
-        assert helpers == {
-            "netuid": 9,
-            "show": "agcli subnet show --netuid 9",
-            "get": "agcli subnet hyperparams --netuid 9",
-            "owner_param_list": "agcli subnet set-param --netuid 9 --param list",
-            "admin_list": "agcli admin list",
-            "raw": "agcli admin raw --call <sudo-call>",
-            "sudo_note": (
-                "Use admin list to discover the exact set-* command for root-only knobs, then "
-                "run it with --sudo-key. Subnet-owner knobs can usually use subnet set-param instead."
-            ),
-        }
+        assert helpers["netuid"] == 9
+        assert helpers["scope"] == "subnet_admin"
+        assert helpers["show"] == "agcli subnet show --netuid 9"
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 9"
+        assert helpers["owner_param_list"] == "agcli subnet set-param --netuid 9 --param list"
+        assert helpers["admin_list"] == "agcli admin list"
+        assert helpers["raw"] == "agcli admin raw --call <sudo-call>"
+        assert helpers["sudo_note"] == (
+            "Use admin list to discover the exact set-* command for root-only knobs, then "
+            "run it with --sudo-key. Subnet-owner knobs can usually use subnet set-param instead."
+        )
+        assert helpers["recommended_order"] == ["show", "get", "owner_param_list", "admin_list", "set"]
+        assert helpers["primary_read"] == "agcli subnet hyperparams --netuid 9"
+        assert helpers["mutation_check"] == "agcli admin list"
+        assert "set" not in helpers
+        assert helpers["summary"]
 
     def test_hyperparameter_workflow_help_with_command_stub(self, admin):
         helpers = admin.hyperparameter_workflow_help(9, command=" set-tempo ", value_flag=" --tempo ")
@@ -311,3 +315,668 @@ class TestAdmin:
         )
         assert helpers["value"] == "false"
         assert helpers["set"] == "agcli admin set-network-registration --netuid 9 --allowed false"
+
+    def test_hyperparameter_workflow_help_keeps_existing_surface(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9)
+        assert helpers["scope"] == "subnet_admin"
+        assert helpers["summary"]
+        assert helpers["recommended_order"] == ["show", "get", "owner_param_list", "admin_list", "set"]
+        assert helpers["primary_read"] == "agcli subnet hyperparams --netuid 9"
+        assert helpers["mutation_check"] == "agcli admin list"
+        assert helpers["raw"] == "agcli admin raw --call <sudo-call>"
+        assert helpers["sudo_note"]
+
+    def test_hyperparameter_validation_help_without_payloads(self, admin):
+        helpers = admin.hyperparameter_validation_help(9)
+        assert helpers == {
+            "netuid": 9,
+            "scope": "subnet_admin",
+            "validated_reads": [],
+            "missing_reads": ["show", "get", "owner_param_list", "admin_list"],
+            "has_mutation_plan": False,
+            "validation_status": "missing",
+            "validation_summary": (
+                "Admin hyperparameter reads for subnet 9 still need show, get, owner_param_list, and admin_list output."
+            ),
+            "next_validation_step": "agcli subnet show --netuid 9",
+            "workflow": admin.hyperparameter_workflow_help(9),
+        }
+
+    def test_hyperparameter_validation_help_with_partial_payloads(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, show={"netuid": 9}, get="  ")
+        assert helpers["validated_reads"] == ["show"]
+        assert helpers["missing_reads"] == ["get", "owner_param_list", "admin_list"]
+        assert helpers["validation_status"] == "partial"
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 9"
+
+    def test_hyperparameter_validation_help_with_full_payloads_and_mutation(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            sudo_key="//Alice",
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["validated_reads"] == ["show", "get", "owner_param_list", "admin_list"]
+        assert helpers["missing_reads"] == []
+        assert helpers["has_mutation_plan"] is True
+        assert helpers["validation_status"] == "ready_to_mutate"
+        assert helpers["next_validation_step"] == "agcli admin set-tempo --netuid 9 --tempo 360 --sudo-key //Alice"
+
+    def test_hyperparameter_validation_text(self, admin):
+        text = admin.hyperparameter_validation_text(9, get={"tempo": 360})
+        assert (
+            text
+            == "Admin hyperparameter reads for subnet 9 have get; still missing show, owner_param_list, admin_list."
+        )
+
+    def test_hyperparameter_snapshot_help(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9,
+            command="set-network-registration",
+            value_flag="--allowed",
+            value=False,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+        )
+        assert helpers["workflow"] == admin.hyperparameter_workflow_help(
+            9,
+            command="set-network-registration",
+            value_flag="--allowed",
+            value=False,
+        )
+        assert helpers["validation_status"] == "partial"
+        assert helpers["missing_reads"] == ["admin_list"]
+        assert helpers["has_mutation_plan"] is True
+        assert helpers["next_validation_step"] == "agcli admin list"
+
+    def test_hyperparameter_snapshot_text(self, admin):
+        text = admin.hyperparameter_snapshot_text(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert text == (
+            "Admin hyperparameter reads for subnet 9 are ready and the mutation command is prepared. "
+            "Next: agcli admin set-tempo --netuid 9 --tempo 360"
+        )
+
+    def test_hyperparameters_aliases_match_new_hyperparameter_helpers(self, admin):
+        kwargs = {
+            "command": "set-tempo",
+            "value_flag": "--tempo",
+            "value": 360,
+            "show": {"netuid": 9},
+            "get": {"tempo": 360},
+            "owner_param_list": ["tempo"],
+            "admin_list": ["set-tempo"],
+        }
+        assert admin.hyperparameters_validation_help(9, **kwargs) == admin.hyperparameter_validation_help(9, **kwargs)
+        assert admin.hyperparameters_validation_text(9, **kwargs) == admin.hyperparameter_validation_text(9, **kwargs)
+        assert admin.hyperparameters_snapshot_help(9, **kwargs) == admin.hyperparameter_snapshot_help(9, **kwargs)
+        assert admin.hyperparameters_snapshot_text(9, **kwargs) == admin.hyperparameter_snapshot_text(9, **kwargs)
+
+    def test_hyperparameter_validation_help_without_mutation_plan_ready(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["has_mutation_plan"] is False
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == "agcli admin raw --call <sudo-call>"
+
+    def test_hyperparameter_validation_help_treats_blank_payloads_as_missing(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, show={}, get=[], owner_param_list=set(), admin_list="   ")
+        assert helpers["validated_reads"] == []
+        assert helpers["missing_reads"] == ["show", "get", "owner_param_list", "admin_list"]
+        assert helpers["validation_status"] == "missing"
+
+    def test_hyperparameter_snapshot_help_preserves_workflow_fields(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(9, command="set-tempo", value_flag="--tempo")
+        assert helpers["show"] == "agcli subnet show --netuid 9"
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 9"
+        assert helpers["owner_param_list"] == "agcli subnet set-param --netuid 9 --param list"
+        assert helpers["admin_list"] == "agcli admin list"
+        assert helpers["set"] == "agcli admin set-tempo --netuid 9 --tempo <value>"
+        assert helpers["workflow"] == admin.hyperparameter_workflow_help(9, command="set-tempo", value_flag="--tempo")
+
+    def test_hyperparameter_validation_help_accepts_truthy_scalar_payloads(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, show=1, get=2, owner_param_list=3, admin_list=4)
+        assert helpers["validation_status"] == "ready"
+        assert helpers["validated_reads"] == ["show", "get", "owner_param_list", "admin_list"]
+
+    def test_hyperparameter_validation_help_rejects_invalid_netuid(self, admin):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            admin.hyperparameter_validation_help(0)
+
+    def test_hyperparameter_snapshot_help_rejects_empty_command(self, admin):
+        with pytest.raises(ValueError, match="command cannot be empty"):
+            admin.hyperparameter_snapshot_help(9, command="   ")
+
+    def test_hyperparameters_snapshot_text_alias_rejects_empty_value_flag(self, admin):
+        with pytest.raises(ValueError, match="value_flag cannot be empty"):
+            admin.hyperparameters_snapshot_text(9, command="set-tempo", value_flag="   ")
+
+    def test_hyperparameter_validation_text_ready_without_mutation_plan(self, admin):
+        text = admin.hyperparameter_validation_text(
+            9,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert text == (
+            "Admin hyperparameter reads for subnet 9 are ready: show, get, "
+            "owner_param_list, and admin_list output are present."
+        )
+
+    def test_hyperparameter_snapshot_text_with_partial_reads(self, admin):
+        text = admin.hyperparameter_snapshot_text(9, get={"tempo": 360}, admin_list=["set-tempo"])
+        assert text == (
+            "Admin hyperparameter reads for subnet 9 have get, admin_list; still missing show, owner_param_list. "
+            "Next: agcli subnet show --netuid 9"
+        )
+
+    def test_hyperparameter_workflow_help_without_command_keeps_no_set(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9)
+        assert "set" not in helpers
+        assert helpers["recommended_order"][-1] == "set"
+        assert helpers["primary_read"] == helpers["get"]
+        assert helpers["mutation_check"] == helpers["admin_list"]
+
+    def test_hyperparameter_validation_help_full_ready_without_sudo(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["next_validation_step"] == "agcli admin set-tempo --netuid 9 --tempo 360"
+
+    def test_hyperparameter_validation_help_with_stub_mutation_plan(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["validation_status"] == "ready_to_mutate"
+        assert helpers["next_validation_step"] == "agcli admin set-tempo --netuid 9 --tempo <value>"
+
+    def test_hyperparameters_validation_text_alias_with_partial_payloads(self, admin):
+        text = admin.hyperparameters_validation_text(9, admin_list=["set-tempo"])
+        assert (
+            text
+            == "Admin hyperparameter reads for subnet 9 have admin_list; still missing show, get, owner_param_list."
+        )
+
+    def test_hyperparameters_snapshot_help_alias_with_mutation_plan(self, admin):
+        helpers = admin.hyperparameters_snapshot_help(
+            9, command="set-network-registration", value_flag="--allowed", value=False
+        )
+        assert helpers["workflow"]["set"] == "agcli admin set-network-registration --netuid 9 --allowed false"
+        assert helpers["has_mutation_plan"] is True
+
+    def test_hyperparameter_snapshot_help_with_trimmed_sudo_key(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            sudo_key=" //Alice ",
+        )
+        assert helpers["workflow"]["sudo_key"] == "//Alice"
+        assert helpers["workflow"]["set"] == "agcli admin set-tempo --netuid 9 --tempo 360 --sudo-key //Alice"
+
+    def test_hyperparameter_validation_help_with_string_payloads(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            show="show",
+            get="get",
+            owner_param_list="owner",
+            admin_list="admin",
+        )
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == "agcli admin raw --call <sudo-call>"
+
+    def test_hyperparameter_snapshot_text_with_bool_mutation_value(self, admin):
+        text = admin.hyperparameter_snapshot_text(
+            9,
+            command="set-commit-reveal",
+            value_flag="--enabled",
+            value=True,
+            show={"netuid": 9},
+            get={"commit_reveal": True},
+            owner_param_list=["commit_reveal"],
+            admin_list=["set-commit-reveal"],
+        )
+        assert text.endswith("Next: agcli admin set-commit-reveal --netuid 9 --enabled true")
+
+    def test_hyperparameter_validation_help_uses_scope_from_workflow(self, admin):
+        helpers = admin.hyperparameter_validation_help(9)
+        assert helpers["scope"] == "subnet_admin"
+
+    def test_hyperparameter_snapshot_help_includes_summary_fields(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(9)
+        assert helpers["summary"]
+        assert helpers["recommended_order"] == ["show", "get", "owner_param_list", "admin_list", "set"]
+        assert helpers["primary_read"] == "agcli subnet hyperparams --netuid 9"
+        assert helpers["mutation_check"] == "agcli admin list"
+
+    def test_hyperparameter_validation_help_with_only_show_points_to_get(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, show={"netuid": 9})
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 9"
+
+    def test_hyperparameter_validation_help_with_show_and_get_points_to_owner_param_list(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, show={"netuid": 9}, get={"tempo": 360})
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 9 --param list"
+
+    def test_hyperparameter_validation_help_with_show_get_owner_param_list_points_to_admin_list(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9, show={"netuid": 9}, get={"tempo": 360}, owner_param_list=["tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli admin list"
+
+    def test_hyperparameter_snapshot_help_ready_without_mutation_plan_points_to_raw(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["next_validation_step"] == "agcli admin raw --call <sudo-call>"
+
+    def test_hyperparameter_workflow_help_summary_mentions_root_only_knobs(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9)
+        assert "root-only knobs" in helpers["summary"]
+
+    def test_hyperparameter_snapshot_help_workflow_embeds_set_when_present(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(9, command="set-tempo", value_flag="--tempo", value=360)
+        assert helpers["workflow"]["set"] == "agcli admin set-tempo --netuid 9 --tempo 360"
+
+    def test_hyperparameter_validation_text_missing_everything(self, admin):
+        text = admin.hyperparameter_validation_text(9)
+        assert text == (
+            "Admin hyperparameter reads for subnet 9 still need show, get, owner_param_list, and admin_list output."
+        )
+
+    def test_hyperparameters_snapshot_text_alias_missing_everything(self, admin):
+        text = admin.hyperparameters_snapshot_text(9)
+        assert text == (
+            "Admin hyperparameter reads for subnet 9 still need show, get, owner_param_list, and admin_list output. "
+            "Next: agcli subnet show --netuid 9"
+        )
+
+    def test_hyperparameter_validation_help_with_all_reads_and_bool_value(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            command="set-network-registration",
+            value_flag="--allowed",
+            value=False,
+            show={"netuid": 9},
+            get={"allowed": False},
+            owner_param_list=["network_registration_allowed"],
+            admin_list=["set-network-registration"],
+        )
+        assert helpers["validation_status"] == "ready_to_mutate"
+        assert helpers["next_validation_step"] == "agcli admin set-network-registration --netuid 9 --allowed false"
+
+    def test_hyperparameter_snapshot_help_with_float_value(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9,
+            command="set-adjustment-alpha",
+            value_flag="--alpha",
+            value=0.5,
+        )
+        assert helpers["workflow"]["value"] == "0.5"
+        assert helpers["workflow"]["set"] == "agcli admin set-adjustment-alpha --netuid 9 --alpha 0.5"
+
+    def test_hyperparameter_validation_help_alias_rejects_empty_sudo_key(self, admin):
+        with pytest.raises(ValueError, match="sudo_key cannot be empty"):
+            admin.hyperparameters_validation_help(9, command="set-tempo", value_flag="--tempo", sudo_key="   ")
+
+    def test_hyperparameter_snapshot_help_alias_rejects_invalid_netuid(self, admin):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            admin.hyperparameters_snapshot_help(0)
+
+    def test_hyperparameter_validation_help_with_only_owner_param_list_points_to_show(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, owner_param_list=["tempo"])
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_validation_help_with_only_admin_list_points_to_show(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, admin_list=["set-tempo"])
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_snapshot_help_with_partial_reads_preserves_workflow(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(9, get={"tempo": 360})
+        assert helpers["workflow"] == admin.hyperparameter_workflow_help(9)
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_validation_help_with_command_only_no_reads(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, command="set-tempo", value_flag="--tempo")
+        assert helpers["has_mutation_plan"] is True
+        assert helpers["validation_status"] == "missing"
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_snapshot_text_with_command_only_no_reads(self, admin):
+        text = admin.hyperparameter_snapshot_text(9, command="set-tempo", value_flag="--tempo")
+        assert text == (
+            "Admin hyperparameter reads for subnet 9 still need show, get, owner_param_list, and admin_list output. "
+            "Next: agcli subnet show --netuid 9"
+        )
+
+    def test_hyperparameter_workflow_help_with_command_preserves_summary_fields(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9, command="set-tempo", value_flag="--tempo")
+        assert helpers["scope"] == "subnet_admin"
+        assert helpers["summary"]
+        assert helpers["recommended_order"] == ["show", "get", "owner_param_list", "admin_list", "set"]
+        assert helpers["primary_read"] == helpers["get"]
+        assert helpers["mutation_check"] == helpers["admin_list"]
+
+    def test_hyperparameter_snapshot_help_with_ready_reads_and_no_command_uses_raw(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == "agcli admin raw --call <sudo-call>"
+
+    def test_hyperparameter_validation_text_with_mutation_plan_ready(self, admin):
+        text = admin.hyperparameter_validation_text(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert text == "Admin hyperparameter reads for subnet 9 are ready and the mutation command is prepared."
+
+    def test_hyperparameter_snapshot_help_rejects_sudo_without_command(self, admin):
+        with pytest.raises(ValueError, match="sudo_key requires command"):
+            admin.hyperparameter_snapshot_help(9, sudo_key="//Alice")
+
+    def test_hyperparameter_validation_help_rejects_value_without_flag(self, admin):
+        with pytest.raises(ValueError, match="value requires command and value_flag"):
+            admin.hyperparameter_validation_help(9, command="set-tempo", value=1)
+
+    def test_hyperparameters_validation_text_alias_rejects_empty_command(self, admin):
+        with pytest.raises(ValueError, match="command cannot be empty"):
+            admin.hyperparameters_validation_text(9, command="   ")
+
+    def test_hyperparameter_snapshot_help_rejects_value_flag_without_command(self, admin):
+        with pytest.raises(ValueError, match="value_flag requires command"):
+            admin.hyperparameter_snapshot_help(9, value_flag="--tempo")
+
+    def test_hyperparameter_validation_help_rejects_value_without_command(self, admin):
+        with pytest.raises(ValueError, match="value requires command and value_flag"):
+            admin.hyperparameter_validation_help(9, value=1)
+
+    def test_hyperparameter_snapshot_help_rejects_value_without_command(self, admin):
+        with pytest.raises(ValueError, match="value requires command and value_flag"):
+            admin.hyperparameter_snapshot_help(9, value=1)
+
+    def test_hyperparameter_snapshot_help_rejects_sudo_key_without_command(self, admin):
+        with pytest.raises(ValueError, match="sudo_key requires command"):
+            admin.hyperparameter_snapshot_help(9, sudo_key="//Alice")
+
+    def test_hyperparameter_snapshot_help_rejects_value_without_flag(self, admin):
+        with pytest.raises(ValueError, match="value requires command and value_flag"):
+            admin.hyperparameter_snapshot_help(9, command="set-tempo", value=1)
+
+    def test_hyperparameter_validation_help_rejects_empty_value_flag(self, admin):
+        with pytest.raises(ValueError, match="value_flag cannot be empty"):
+            admin.hyperparameter_validation_help(9, command="set-tempo", value_flag="   ")
+
+    def test_hyperparameter_validation_help_rejects_empty_command(self, admin):
+        with pytest.raises(ValueError, match="command cannot be empty"):
+            admin.hyperparameter_validation_help(9, command="   ")
+
+    def test_hyperparameter_validation_help_rejects_empty_sudo_key(self, admin):
+        with pytest.raises(ValueError, match="sudo_key cannot be empty"):
+            admin.hyperparameter_validation_help(9, command="set-tempo", value_flag="--tempo", sudo_key="   ")
+
+    def test_hyperparameter_snapshot_text_alias_with_mutation_plan_ready(self, admin):
+        text = admin.hyperparameters_snapshot_text(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert text.endswith("Next: agcli admin set-tempo --netuid 9 --tempo 360")
+
+    def test_hyperparameter_validation_help_with_show_owner_admin_points_to_get(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9, show={"netuid": 9}, owner_param_list=["tempo"], admin_list=["set-tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 9"
+
+    def test_hyperparameter_validation_help_with_get_owner_admin_points_to_show(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9, get={"tempo": 360}, owner_param_list=["tempo"], admin_list=["set-tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_validation_help_with_show_get_admin_points_to_owner_param_list(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9, show={"netuid": 9}, get={"tempo": 360}, admin_list=["set-tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 9 --param list"
+
+    def test_hyperparameter_snapshot_help_with_show_get_admin_points_to_owner_param_list(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9, show={"netuid": 9}, get={"tempo": 360}, admin_list=["set-tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 9 --param list"
+
+    def test_hyperparameter_snapshot_help_with_show_owner_admin_points_to_get(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9, show={"netuid": 9}, owner_param_list=["tempo"], admin_list=["set-tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 9"
+
+    def test_hyperparameter_snapshot_help_with_get_owner_admin_points_to_show(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9, get={"tempo": 360}, owner_param_list=["tempo"], admin_list=["set-tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_workflow_help_recommended_order_is_copy(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9)
+        helpers["recommended_order"].append("oops")
+        assert admin.hyperparameter_workflow_help(9)["recommended_order"] == [
+            "show",
+            "get",
+            "owner_param_list",
+            "admin_list",
+            "set",
+        ]
+
+    def test_hyperparameter_snapshot_help_workflow_is_copy(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(9)
+        helpers["workflow"]["show"] = "mutated"
+        assert admin.hyperparameter_workflow_help(9)["show"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_validation_help_workflow_contains_raw(self, admin):
+        helpers = admin.hyperparameter_validation_help(9)
+        assert helpers["workflow"]["raw"] == "agcli admin raw --call <sudo-call>"
+
+    def test_hyperparameter_validation_help_with_command_only_ready_fields_not_used(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, command="set-tempo", value_flag="--tempo")
+        assert helpers["workflow"]["set"] == "agcli admin set-tempo --netuid 9 --tempo <value>"
+
+    def test_hyperparameter_snapshot_text_with_ready_reads_and_sudo(self, admin):
+        text = admin.hyperparameter_snapshot_text(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            sudo_key="//Alice",
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert text.endswith("Next: agcli admin set-tempo --netuid 9 --tempo 360 --sudo-key //Alice")
+
+    def test_hyperparameter_validation_help_empty_string_admin_list_is_missing(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9, show={"netuid": 9}, get={"tempo": 360}, owner_param_list=["tempo"], admin_list=""
+        )
+        assert helpers["missing_reads"] == ["admin_list"]
+        assert helpers["next_validation_step"] == "agcli admin list"
+
+    def test_hyperparameter_snapshot_help_with_empty_string_admin_list_is_missing(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9, show={"netuid": 9}, get={"tempo": 360}, owner_param_list=["tempo"], admin_list=""
+        )
+        assert helpers["missing_reads"] == ["admin_list"]
+        assert helpers["next_validation_step"] == "agcli admin list"
+
+    def test_hyperparameter_validation_help_with_float_value_ready_to_mutate(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            command="set-adjustment-alpha",
+            value_flag="--alpha",
+            value=0.5,
+            show={"netuid": 9},
+            get={"alpha": 0.5},
+            owner_param_list=["alpha"],
+            admin_list=["set-adjustment-alpha"],
+        )
+        assert helpers["next_validation_step"] == "agcli admin set-adjustment-alpha --netuid 9 --alpha 0.5"
+
+    def test_hyperparameter_snapshot_help_with_bool_value_ready_to_mutate(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9,
+            command="set-commit-reveal",
+            value_flag="--enabled",
+            value=True,
+            show={"netuid": 9},
+            get={"enabled": True},
+            owner_param_list=["commit_reveal"],
+            admin_list=["set-commit-reveal"],
+        )
+        assert helpers["next_validation_step"] == "agcli admin set-commit-reveal --netuid 9 --enabled true"
+
+    def test_hyperparameter_snapshot_help_without_reads_is_missing(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(9)
+        assert helpers["validation_status"] == "missing"
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_validation_help_with_show_get_owner_param_list_admin_list_and_no_command_is_ready(
+        self, admin
+    ):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == "agcli admin raw --call <sudo-call>"
+
+    def test_hyperparameter_validation_help_with_only_get_points_to_show(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, get={"tempo": 360})
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 9"
+
+    def test_hyperparameter_validation_help_with_only_show_and_admin_points_to_get(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, show={"netuid": 9}, admin_list=["set-tempo"])
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 9"
+
+    def test_hyperparameter_validation_help_with_only_show_get_and_owner_points_to_admin(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9, show={"netuid": 9}, get={"tempo": 360}, owner_param_list=["tempo"]
+        )
+        assert helpers["next_validation_step"] == "agcli admin list"
+
+    def test_hyperparameter_validation_help_summary_for_ready_to_mutate(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert (
+            helpers["validation_summary"]
+            == "Admin hyperparameter reads for subnet 9 are ready and the mutation command is prepared."
+        )
+
+    def test_hyperparameter_validation_help_summary_for_ready(self, admin):
+        helpers = admin.hyperparameter_validation_help(
+            9,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["validation_summary"] == (
+            "Admin hyperparameter reads for subnet 9 are ready: show, get, "
+            "owner_param_list, and admin_list output are present."
+        )
+
+    def test_hyperparameter_validation_help_summary_for_partial(self, admin):
+        helpers = admin.hyperparameter_validation_help(9, show={"netuid": 9}, admin_list=["set-tempo"])
+        assert helpers["validation_summary"] == (
+            "Admin hyperparameter reads for subnet 9 have show, admin_list; still missing get, owner_param_list."
+        )
+
+    def test_hyperparameter_workflow_help_command_trim_preserves_summary(self, admin):
+        helpers = admin.hyperparameter_workflow_help(9, command=" set-tempo ", value_flag=" --tempo ")
+        assert helpers["command"] == "set-tempo"
+        assert helpers["summary"]
+        assert helpers["recommended_order"] == ["show", "get", "owner_param_list", "admin_list", "set"]
+
+    def test_hyperparameter_snapshot_help_ready_to_mutate_status(self, admin):
+        helpers = admin.hyperparameter_snapshot_help(
+            9,
+            command="set-tempo",
+            value_flag="--tempo",
+            value=360,
+            show={"netuid": 9},
+            get={"tempo": 360},
+            owner_param_list=["tempo"],
+            admin_list=["set-tempo"],
+        )
+        assert helpers["validation_status"] == "ready_to_mutate"
+
+    def test_hyperparameters_validation_help_alias_with_string_payloads(self, admin):
+        helpers = admin.hyperparameters_validation_help(
+            9, show="show", get="get", owner_param_list="owner", admin_list="admin"
+        )
+        assert helpers["validation_status"] == "ready"

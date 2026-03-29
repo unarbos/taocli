@@ -216,16 +216,618 @@ class TestSubnet:
 
     def test_registration_workflow_help(self, subnet):
         helpers = subnet.registration_workflow_help(11)
+        assert helpers["netuid"] == 11
+        assert helpers["scope"] == "subnet"
+        assert helpers["summary"] == "Check subnet 11 readiness, then register on subnet 11."
+        assert helpers["recommended_order"] == [
+            "subnet",
+            "registration_cost",
+            "health",
+            "register_neuron",
+            "post_registration_check",
+        ]
+        assert helpers["subnet"] == "agcli subnet show --netuid 11"
+        assert helpers["hyperparams"] == "agcli subnet hyperparams --netuid 11"
+        assert helpers["registration_cost"] == "agcli subnet cost --netuid 11"
+        assert helpers["health"] == "agcli subnet health --netuid 11"
+        assert helpers["register_neuron"] == "agcli subnet register-neuron --netuid 11"
+        assert helpers["pow_register"] == "agcli subnet pow --netuid 11"
+        assert helpers["snipe_register"] == "agcli subnet snipe --netuid 11"
+        assert helpers["primary_register"] == "agcli subnet register-neuron --netuid 11"
+        assert helpers["post_registration_check"] == "agcli subnet metagraph --netuid 11 --full"
+        assert helpers["registration_confirmation_note"]
+        assert "wallet_selection_note" not in helpers
+        assert "wallet" not in helpers
+        assert "hotkey" not in helpers
+
+    def test_registration_validation_help_without_payloads(self, subnet):
+        helpers = subnet.registration_validation_help(11)
         assert helpers == {
             "netuid": 11,
-            "subnet": "agcli subnet show --netuid 11",
-            "hyperparams": "agcli subnet hyperparams --netuid 11",
-            "registration_cost": "agcli subnet cost --netuid 11",
-            "health": "agcli subnet health --netuid 11",
-            "register_neuron": "agcli subnet register-neuron --netuid 11",
-            "pow_register": "agcli subnet pow --netuid 11",
-            "snipe_register": "agcli subnet snipe --netuid 11",
+            "scope": "subnet",
+            "validated_reads": [],
+            "missing_reads": ["subnet", "registration_cost", "health"],
+            "confirmed_registered": False,
+            "validation_status": "missing",
+            "validation_summary": (
+                "Registration on subnet 11 still needs preflight reads: "
+                "subnet, registration_cost, health."
+            ),
+            "next_validation_step": "agcli subnet show --netuid 11",
+            "workflow": subnet.registration_workflow_help(11),
         }
+
+    def test_hyperparameter_validation_help_without_payloads(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11)
+        assert helpers == {
+            "netuid": 11,
+            "validated_reads": [],
+            "missing_reads": ["subnet", "hyperparams", "param_list"],
+            "validation_status": "missing",
+            "validation_summary": (
+                "Hyperparameter reads for subnet 11 still need subnet, hyperparams, and param_list output."
+            ),
+            "next_validation_step": "agcli subnet show --netuid 11",
+            "workflow": subnet.hyperparameter_workflow_help(11),
+        }
+
+    def test_hyperparameter_validation_help_with_partial_payloads(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet={"netuid": 11}, hyperparams="  ")
+        assert helpers["validated_reads"] == ["subnet"]
+        assert helpers["missing_reads"] == ["hyperparams", "param_list"]
+        assert helpers["validation_status"] == "partial"
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 11"
+
+    def test_hyperparameter_validation_help_with_full_payloads_and_wallet(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(
+            11,
+            wallet="owner",
+            param="tempo",
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["validated_reads"] == ["subnet", "hyperparams", "param_list"]
+        assert helpers["missing_reads"] == []
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == (
+            "agcli --wallet owner subnet set-param --netuid 11 --param tempo --value 360"
+        )
+        assert helpers["workflow"]["wallet"] == "owner"
+
+    def test_hyperparameter_validation_text(self, subnet):
+        text = subnet.hyperparameter_validation_text(11, subnet={"netuid": 11})
+        assert (
+            text == "Hyperparameter reads for subnet 11 have subnet; still missing hyperparams, param_list."
+        )
+
+    def test_hyperparameter_snapshot_help(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(
+            11,
+            wallet="owner",
+            param="tempo",
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+        )
+        assert helpers["workflow"] == subnet.hyperparameter_workflow_help(
+            11, wallet="owner", param="tempo", value="360"
+        )
+        assert helpers["validation_status"] == "partial"
+        assert helpers["missing_reads"] == ["param_list"]
+        assert helpers["next_validation_step"] == "agcli --wallet owner subnet set-param --netuid 11 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 11 --param tempo --value 360"
+
+    def test_hyperparameter_snapshot_text(self, subnet):
+        text = subnet.hyperparameter_snapshot_text(11, hyperparams={"tempo": 360}, param_list=["tempo"])
+        assert (
+            text
+            == "Hyperparameter reads for subnet 11 have hyperparams, param_list; still missing subnet. Next: agcli subnet show --netuid 11"
+        )
+
+    def test_hyperparameters_aliases_match_new_hyperparameter_helpers(self, subnet):
+        kwargs = {
+            "wallet": "owner",
+            "param": "tempo",
+            "value": "360",
+            "subnet": {"netuid": 11},
+            "hyperparams": {"tempo": 360},
+            "param_list": ["tempo"],
+        }
+        assert subnet.hyperparameters_validation_help(11, **kwargs) == subnet.hyperparameter_validation_help(11, **kwargs)
+        assert subnet.hyperparameters_validation_text(11, **kwargs) == subnet.hyperparameter_validation_text(11, **kwargs)
+        assert subnet.hyperparameters_snapshot_help(11, **kwargs) == subnet.hyperparameter_snapshot_help(11, **kwargs)
+        assert subnet.hyperparameters_snapshot_text(11, **kwargs) == subnet.hyperparameter_snapshot_text(11, **kwargs)
+
+    def test_hyperparameter_validation_help_rejects_invalid_netuid(self, subnet):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            subnet.hyperparameter_validation_help(0)
+
+    def test_hyperparameter_snapshot_help_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameter_snapshot_help(11, wallet="   ")
+
+    def test_hyperparameters_snapshot_help_rejects_empty_param_alias(self, subnet):
+        with pytest.raises(ValueError, match="param cannot be empty"):
+            subnet.hyperparameters_snapshot_help(11, param="   ")
+
+    def test_hyperparameter_snapshot_text_uses_trimmed_string_payloads(self, subnet):
+        text = subnet.hyperparameter_snapshot_text(
+            11,
+            wallet=" owner ",
+            param=" tempo ",
+            value=" 360 ",
+            subnet="  ok  ",
+            hyperparams=" values ",
+            param_list=" names ",
+        )
+        assert text == (
+            "Hyperparameter reads for subnet 11 are ready: subnet, hyperparams, and param_list output are present. "
+            "Next: agcli --wallet owner subnet set-param --netuid 11 --param tempo --value 360"
+        )
+
+    def test_hyperparameter_workflow_help_keeps_existing_surface(self, subnet):
+        helpers = subnet.hyperparameter_workflow_help(11, wallet="owner", param="tempo", value="360")
+        assert helpers["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 11 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 11 --param tempo --value 360"
+        assert helpers["mutation_note"]
+        assert helpers["admin_list"] == "agcli admin list"
+        assert "scope" not in helpers
+        assert "summary" not in helpers
+        assert "recommended_order" not in helpers
+        assert "workflow" not in helpers
+        assert "validation_status" not in helpers
+        assert "next_validation_step" not in helpers
+        assert "primary_read" not in helpers
+        assert "mutation_check" not in helpers
+        assert "raw" not in helpers
+
+    def test_hyperparameter_validation_help_treats_blank_collections_as_missing(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet={}, hyperparams=[], param_list=set())
+        assert helpers["validated_reads"] == []
+        assert helpers["missing_reads"] == ["subnet", "hyperparams", "param_list"]
+        assert helpers["validation_status"] == "missing"
+
+    def test_hyperparameter_snapshot_help_preserves_workflow_identity(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, param="tempo")
+        assert helpers["workflow"] == subnet.hyperparameter_workflow_help(11, param="tempo")
+        assert helpers["set"] == "agcli subnet set-param --netuid 11 --param tempo"
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_hyperparameter_validation_help_next_step_prefers_param_list_before_set(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(
+            11,
+            param="tempo",
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+        )
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11 --param list"
+        assert helpers["validation_status"] == "partial"
+
+    def test_hyperparameter_snapshot_text_with_no_param_uses_base_set_command(self, subnet):
+        text = subnet.hyperparameter_snapshot_text(
+            11,
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert text == (
+            "Hyperparameter reads for subnet 11 are ready: subnet, hyperparams, and param_list output are present. "
+            "Next: agcli subnet set-param --netuid 11"
+        )
+
+    def test_hyperparameter_validation_help_with_param_but_no_value_points_to_param_command(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(
+            11,
+            wallet="owner",
+            param="tempo",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == "agcli --wallet owner subnet set-param --netuid 11 --param tempo"
+
+    def test_hyperparameters_validation_text_alias_with_partial_payloads(self, subnet):
+        text = subnet.hyperparameters_validation_text(11, hyperparams={"tempo": 360})
+        assert text == "Hyperparameter reads for subnet 11 have hyperparams; still missing subnet, param_list."
+
+    def test_hyperparameters_snapshot_text_alias_with_wallet_prefix(self, subnet):
+        text = subnet.hyperparameters_snapshot_text(
+            11,
+            wallet="owner",
+            param="tempo",
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert text.endswith("Next: agcli --wallet owner subnet set-param --netuid 11 --param tempo --value 360")
+
+    def test_hyperparameter_validation_help_accepts_truthy_scalar_payloads(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet=1, hyperparams=2, param_list=3)
+        assert helpers["validation_status"] == "ready"
+        assert helpers["validated_reads"] == ["subnet", "hyperparams", "param_list"]
+
+    def test_hyperparameter_snapshot_help_with_value_without_param_keeps_base_set_command(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(
+            11,
+            wallet="owner",
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 11"
+        assert helpers["next_validation_step"] == "agcli --wallet owner subnet set-param --netuid 11"
+
+    def test_hyperparameter_validation_help_with_only_param_list_points_to_subnet(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, param_list=["tempo"])
+        assert helpers["validated_reads"] == ["param_list"]
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_hyperparameter_snapshot_help_alias_rejects_invalid_netuid(self, subnet):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            subnet.hyperparameters_snapshot_help(0)
+
+    def test_hyperparameter_validation_help_preserves_wallet_note_in_workflow(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, wallet="owner")
+        assert helpers["workflow"]["wallet_selection_note"]
+        assert helpers["workflow"]["wallet"] == "owner"
+
+    def test_hyperparameter_snapshot_help_includes_workflow_commands(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, wallet="owner", param="tempo")
+        assert helpers["show"] == "agcli subnet show --netuid 11"
+        assert helpers["get"] == "agcli subnet hyperparams --netuid 11"
+        assert helpers["param_list"] == "agcli --wallet owner subnet set-param --netuid 11 --param list"
+        assert helpers["set"] == "agcli --wallet owner subnet set-param --netuid 11 --param tempo"
+
+    def test_hyperparameters_validation_help_alias_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameters_validation_help(11, wallet="")
+
+    def test_hyperparameters_validation_text_alias_rejects_invalid_netuid(self, subnet):
+        with pytest.raises(ValueError, match="netuid must be greater than 0"):
+            subnet.hyperparameters_validation_text(0)
+
+    def test_hyperparameters_snapshot_text_alias_rejects_empty_value(self, subnet):
+        with pytest.raises(ValueError, match="value cannot be empty"):
+            subnet.hyperparameters_snapshot_text(11, param="tempo", value="   ")
+
+    def test_hyperparameter_validation_help_param_only_workflow_next_step(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(
+            11,
+            param="tempo",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11 --param tempo"
+        assert helpers["validation_status"] == "ready"
+
+    def test_hyperparameter_snapshot_text_with_partial_and_wallet(self, subnet):
+        text = subnet.hyperparameter_snapshot_text(11, wallet="owner", subnet={"netuid": 11})
+        assert text == (
+            "Hyperparameter reads for subnet 11 have subnet; still missing hyperparams, param_list. "
+            "Next: agcli subnet hyperparams --netuid 11"
+        )
+
+    def test_hyperparameter_validation_help_with_whitespace_param_list_is_missing(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet={"netuid": 11}, hyperparams={"tempo": 360}, param_list="   ")
+        assert helpers["missing_reads"] == ["param_list"]
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11 --param list"
+
+    def test_hyperparameter_snapshot_help_with_alias_workflow_equality(self, subnet):
+        assert subnet.hyperparameter_snapshot_help(11, wallet="owner") == subnet.hyperparameters_snapshot_help(11, wallet="owner")
+
+    def test_hyperparameter_validation_help_next_step_uses_wallet_prefixed_show_when_missing_subnet(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, wallet="owner")
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_hyperparameter_snapshot_help_carries_mutation_note(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11)
+        assert helpers["mutation_note"]
+        assert helpers["admin_list"] == "agcli admin list"
+
+    def test_hyperparameter_validation_help_uses_workflow_netuid_int(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11)
+        assert helpers["netuid"] == 11
+
+    def test_hyperparameter_snapshot_help_with_full_reads_no_param_uses_base_set(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, subnet={"netuid": 11}, hyperparams={"tempo": 360}, param_list=["tempo"])
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11"
+
+    def test_hyperparameter_validation_help_param_list_only_text(self, subnet):
+        text = subnet.hyperparameter_validation_text(11, param_list=["tempo"])
+        assert text == "Hyperparameter reads for subnet 11 have param_list; still missing subnet, hyperparams."
+
+    def test_hyperparameter_snapshot_text_param_only_ready(self, subnet):
+        text = subnet.hyperparameter_snapshot_text(
+            11,
+            param="tempo",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert text == (
+            "Hyperparameter reads for subnet 11 are ready: subnet, hyperparams, and param_list output are present. "
+            "Next: agcli subnet set-param --netuid 11 --param tempo"
+        )
+
+    def test_hyperparameter_snapshot_help_rejects_empty_value(self, subnet):
+        with pytest.raises(ValueError, match="value cannot be empty"):
+            subnet.hyperparameter_snapshot_help(11, param="tempo", value="   ")
+
+    def test_hyperparameter_validation_help_rejects_empty_param(self, subnet):
+        with pytest.raises(ValueError, match="param cannot be empty"):
+            subnet.hyperparameter_validation_help(11, param="")
+
+    def test_hyperparameter_validation_help_rejects_empty_value(self, subnet):
+        with pytest.raises(ValueError, match="value cannot be empty"):
+            subnet.hyperparameter_validation_help(11, param="tempo", value="")
+
+    def test_hyperparameter_validation_help_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameter_validation_help(11, wallet="")
+
+    def test_hyperparameter_snapshot_text_alias_rejects_empty_wallet(self, subnet):
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            subnet.hyperparameters_snapshot_text(11, wallet="")
+
+    def test_hyperparameter_validation_text_alias_rejects_empty_param(self, subnet):
+        with pytest.raises(ValueError, match="param cannot be empty"):
+            subnet.hyperparameters_validation_text(11, param="")
+
+    def test_hyperparameter_validation_help_alias_with_value_without_param_keeps_base_set(self, subnet):
+        helpers = subnet.hyperparameters_validation_help(
+            11,
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11"
+
+    def test_hyperparameter_snapshot_help_alias_with_value_without_param_keeps_base_set(self, subnet):
+        helpers = subnet.hyperparameters_snapshot_help(
+            11,
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["set"] == "agcli subnet set-param --netuid 11"
+
+    def test_hyperparameter_validation_text_alias_with_wallet_and_param(self, subnet):
+        text = subnet.hyperparameters_validation_text(
+            11,
+            wallet="owner",
+            param="tempo",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert text == "Hyperparameter reads for subnet 11 are ready: subnet, hyperparams, and param_list output are present."
+
+    def test_hyperparameter_snapshot_help_alias_with_wallet_and_param(self, subnet):
+        helpers = subnet.hyperparameters_snapshot_help(
+            11,
+            wallet="owner",
+            param="tempo",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["next_validation_step"] == "agcli --wallet owner subnet set-param --netuid 11 --param tempo"
+
+    def test_hyperparameter_snapshot_text_alias_with_wallet_and_param(self, subnet):
+        text = subnet.hyperparameters_snapshot_text(
+            11,
+            wallet="owner",
+            param="tempo",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert text.endswith("Next: agcli --wallet owner subnet set-param --netuid 11 --param tempo")
+
+    def test_hyperparameter_validation_help_with_whitespace_subnet_is_missing(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet="   ", hyperparams={"tempo": 360}, param_list=["tempo"])
+        assert helpers["missing_reads"] == ["subnet"]
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_hyperparameter_validation_help_with_whitespace_hyperparams_is_missing(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet={"netuid": 11}, hyperparams="   ", param_list=["tempo"])
+        assert helpers["missing_reads"] == ["hyperparams"]
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 11"
+
+    def test_hyperparameter_workflow_help_alias_still_matches(self, subnet):
+        assert subnet.hyperparameters_workflow_help(11, wallet="owner", param="tempo", value="360") == subnet.hyperparameter_workflow_help(
+            11, wallet="owner", param="tempo", value="360"
+        )
+
+    def test_hyperparameter_snapshot_help_workflow_embeds_wallet_note(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, wallet="owner")
+        assert helpers["workflow"]["wallet_selection_note"]
+        assert helpers["wallet_selection_note"]
+
+    def test_hyperparameter_snapshot_help_with_ready_reads_and_value(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(
+            11,
+            param="tempo",
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert helpers["validation_status"] == "ready"
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11 --param tempo --value 360"
+
+    def test_hyperparameter_snapshot_text_with_ready_reads_and_value(self, subnet):
+        text = subnet.hyperparameter_snapshot_text(
+            11,
+            param="tempo",
+            value="360",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert text.endswith("Next: agcli subnet set-param --netuid 11 --param tempo --value 360")
+
+    def test_hyperparameter_validation_help_with_wallet_preserves_workflow_wallet(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, wallet="owner", subnet={"netuid": 11})
+        assert helpers["workflow"]["wallet"] == "owner"
+        assert helpers["workflow"]["owner_param_list"] == "agcli --wallet owner subnet set-param --netuid 11 --param list"
+
+    def test_hyperparameter_snapshot_help_with_partial_reads_preserves_workflow(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, wallet="owner", hyperparams={"tempo": 360})
+        assert helpers["workflow"] == subnet.hyperparameter_workflow_help(11, wallet="owner")
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_hyperparameter_validation_text_ready_without_value(self, subnet):
+        text = subnet.hyperparameter_validation_text(
+            11,
+            param="tempo",
+            subnet={"netuid": 11},
+            hyperparams={"tempo": 360},
+            param_list=["tempo"],
+        )
+        assert text == "Hyperparameter reads for subnet 11 are ready: subnet, hyperparams, and param_list output are present."
+
+    def test_hyperparameter_validation_text_missing_everything(self, subnet):
+        text = subnet.hyperparameter_validation_text(11)
+        assert text == "Hyperparameter reads for subnet 11 still need subnet, hyperparams, and param_list output."
+
+    def test_hyperparameter_snapshot_help_with_blank_strings_is_missing(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, subnet="", hyperparams="", param_list="")
+        assert helpers["validation_status"] == "missing"
+        assert helpers["missing_reads"] == ["subnet", "hyperparams", "param_list"]
+
+    def test_hyperparameter_snapshot_text_alias_missing_everything(self, subnet):
+        text = subnet.hyperparameters_snapshot_text(11)
+        assert text == (
+            "Hyperparameter reads for subnet 11 still need subnet, hyperparams, and param_list output. "
+            "Next: agcli subnet show --netuid 11"
+        )
+
+    def test_hyperparameter_snapshot_help_with_trimmed_wallet_param_value(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, wallet=" owner ", param=" tempo ", value=" 360 ")
+        assert helpers["workflow"]["wallet"] == "owner"
+        assert helpers["workflow"]["param"] == "tempo"
+        assert helpers["workflow"]["value"] == "360"
+
+    def test_hyperparameter_validation_help_partial_from_param_list_and_hyperparams(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, hyperparams={"tempo": 360}, param_list=["tempo"])
+        assert helpers["validated_reads"] == ["hyperparams", "param_list"]
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_hyperparameter_snapshot_help_with_partial_from_param_list_and_hyperparams(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, hyperparams={"tempo": 360}, param_list=["tempo"])
+        assert helpers["validation_status"] == "partial"
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_hyperparameter_validation_help_with_only_subnet_points_to_hyperparams(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet={"netuid": 11})
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 11"
+
+    def test_hyperparameter_snapshot_help_with_only_subnet_points_to_hyperparams(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, subnet={"netuid": 11})
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 11"
+
+    def test_hyperparameter_validation_help_with_only_subnet_and_hyperparams_points_to_param_list(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet={"netuid": 11}, hyperparams={"tempo": 360})
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11 --param list"
+
+    def test_hyperparameter_snapshot_help_with_only_subnet_and_hyperparams_points_to_param_list(self, subnet):
+        helpers = subnet.hyperparameter_snapshot_help(11, subnet={"netuid": 11}, hyperparams={"tempo": 360})
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11 --param list"
+
+    def test_hyperparameter_validation_help_with_ready_reads_points_to_set(self, subnet):
+        helpers = subnet.hyperparameter_validation_help(11, subnet={"netuid": 11}, hyperparams={"tempo": 360}, param_list=["tempo"])
+        assert helpers["next_validation_step"] == "agcli subnet set-param --netuid 11"
+
+    def test_registration_validation_help_with_partial_payloads(self, subnet):
+        helpers = subnet.registration_validation_help(11, wallet="cold", subnet={"netuid": 11}, health=["ok"])
+        assert helpers["scope"] == "wallet"
+        assert helpers["validated_reads"] == ["subnet", "health"]
+        assert helpers["missing_reads"] == ["registration_cost"]
+        assert helpers["confirmed_registered"] is False
+        assert helpers["validation_status"] == "partial"
+        assert helpers["next_validation_step"] == "agcli subnet cost --netuid 11"
+        assert helpers["workflow"]["primary_register"] == "agcli --wallet cold subnet register-neuron --netuid 11"
+
+    def test_registration_validation_help_with_ready_preflight_reads(self, subnet):
+        helpers = subnet.registration_validation_help(
+            11,
+            hotkey="miner",
+            subnet={"netuid": 11},
+            registration_cost={"tao": 1.0},
+            health={"healthy": True},
+        )
+        assert helpers["scope"] == "hotkey"
+        assert helpers["validated_reads"] == ["subnet", "registration_cost", "health"]
+        assert helpers["missing_reads"] == []
+        assert helpers["validation_status"] == "ready"
+        assert helpers["confirmed_registered"] is False
+        assert helpers["next_validation_step"] == "agcli --hotkey-name miner subnet register-neuron --netuid 11"
+
+    def test_registration_validation_help_with_registration_proof(self, subnet):
+        helpers = subnet.registration_validation_help(
+            11,
+            wallet="cold",
+            hotkey="miner",
+            subnet={"netuid": 11},
+            registration_cost={"tao": 1.0},
+            health={"healthy": True},
+            registration_proof={"uid": 5},
+        )
+        assert helpers["scope"] == "wallet_and_hotkey"
+        assert helpers["validation_status"] == "registered"
+        assert helpers["confirmed_registered"] is True
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 11"
+        assert "metagraph proof is present" in helpers["validation_summary"]
+
+    def test_registration_validation_help_treats_blank_payload_as_missing(self, subnet):
+        helpers = subnet.registration_validation_help(11, subnet="  ", registration_cost={"tao": 1.0})
+        assert helpers["validated_reads"] == ["registration_cost"]
+        assert helpers["missing_reads"] == ["subnet", "health"]
+        assert helpers["next_validation_step"] == "agcli subnet show --netuid 11"
+
+    def test_registration_validation_text(self, subnet):
+        text = subnet.registration_validation_text(11, subnet={"netuid": 11})
+        assert text == "Registration on subnet 11 has preflight reads subnet; still missing registration_cost, health."
+
+    def test_registration_snapshot_help_combines_workflow_and_validation_fields(self, subnet):
+        helpers = subnet.registration_snapshot_help(
+            11,
+            hotkey="miner",
+            subnet={"netuid": 11},
+            registration_cost={"tao": 1.0},
+        )
+        assert helpers["scope"] == "hotkey"
+        assert helpers["validation_status"] == "partial"
+        assert helpers["validated_reads"] == ["subnet", "registration_cost"]
+        assert helpers["missing_reads"] == ["health"]
+        assert helpers["confirmed_registered"] is False
+        assert helpers["next_validation_step"] == "agcli subnet health --netuid 11"
+        assert helpers["workflow"]["register_neuron"] == "agcli --hotkey-name miner subnet register-neuron --netuid 11"
+
+    def test_registration_snapshot_text(self, subnet):
+        text = subnet.registration_snapshot_text(11, subnet={"netuid": 11}, registration_cost={"tao": 1.0})
+        assert text == (
+            "Registration on subnet 11 has preflight reads subnet, registration_cost; still missing health. "
+            "Next: agcli subnet health --netuid 11"
+        )
+
+    def test_registration_snapshot_help_preserves_workflow_fields(self, subnet):
+        helpers = subnet.registration_snapshot_help(11, wallet="cold", registration_proof={"uid": 7})
+        assert helpers["workflow"]["scope"] == "wallet"
+        assert helpers["workflow"]["summary"] == "Check subnet 11 readiness, then register from wallet cold."
+        assert helpers["workflow"]["post_registration_check"] == "agcli subnet metagraph --netuid 11 --full"
+        assert helpers["confirmed_registered"] is True
 
     def test_registration_workflow_help_with_options(self, subnet):
         helpers = subnet.registration_workflow_help(

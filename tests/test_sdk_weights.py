@@ -73,9 +73,156 @@ DIRECT_SET_STATUS_TEXT = """Weight Commit Status — SN4
   No pending commits.
 """
 
+DIRECT_SET_READY_STATUS_TEXT = """Weight Commit Status — SN12
+  Hotkey:          5D4fL4wD9PjSn1oL2B1Z5Qw8P6r7tA
+  Current block:   220
+  Commit-reveal:   disabled
+  Reveal period:   0 epochs
+
+  No pending commits.
+"""
+
 BAD_STATUS_TEXT = """Weight Commit Status — SN5
   Hotkey:          5F3sa2TJAWMqDhXG6jhV4N8ko9Y8Xr
 """
+
+READY_STATUS_MAPPING = {
+    "block": 125,
+    "commit_reveal_enabled": True,
+    "reveal_period_epochs": 3,
+    "commits": [
+        {
+            "status": "READY TO REVEAL (5 blocks remaining)",
+            "commit_block": 100,
+            "first_reveal": 120,
+            "last_reveal": 130,
+            "blocks_until_action": 5,
+            "hash": "0x1212",
+        }
+    ],
+}
+
+DIRECT_SET_READY_STATUS_MAPPING = {
+    "block": 220,
+    "commit_reveal_enabled": False,
+    "reveal_period_epochs": 0,
+    "commits": [],
+}
+
+WAITING_STATUS_MAPPING = {
+    "block": 100,
+    "commit_reveal_enabled": True,
+    "reveal_period_epochs": 2,
+    "commits": [
+        {
+            "status": "WAITING (10 blocks until reveal window)",
+            "commit_block": 90,
+            "first_reveal": 110,
+            "last_reveal": 120,
+            "blocks_until_action": 10,
+            "hash": "0x3434",
+        }
+    ],
+}
+
+NO_PENDING_STATUS_MAPPING = {
+    "block": 140,
+    "commit_reveal_enabled": True,
+    "reveal_period_epochs": 4,
+    "commits": [],
+}
+
+READY_STATUS_SUMMARY = {
+    "current_block": 125,
+    "commit_reveal_enabled": True,
+    "reveal_period_epochs": 3,
+    "pending_commits": 1,
+    "pending_statuses": ["READY TO REVEAL (5 blocks remaining)"],
+    "next_action": "REVEAL",
+    "commit_windows": [
+        {
+            "index": 1,
+            "status": "READY TO REVEAL (5 blocks remaining)",
+            "commit_block": 100,
+            "first_reveal": 120,
+            "last_reveal": 130,
+            "blocks_until_action": 5,
+            "hash": "0x1212",
+        }
+    ],
+}
+
+DIRECT_SET_READY_STATUS_SUMMARY = {
+    "current_block": 220,
+    "commit_reveal_enabled": False,
+    "reveal_period_epochs": 0,
+    "pending_commits": 0,
+    "pending_statuses": [],
+    "next_action": "NO_PENDING_COMMITS",
+    "commit_windows": [],
+}
+
+WAITING_STATUS_SUMMARY = {
+    "current_block": 100,
+    "commit_reveal_enabled": True,
+    "reveal_period_epochs": 2,
+    "pending_commits": 1,
+    "pending_statuses": ["WAITING (10 blocks until reveal window)"],
+    "next_action": "WAIT",
+    "commit_windows": [
+        {
+            "index": 1,
+            "status": "WAITING (10 blocks until reveal window)",
+            "commit_block": 90,
+            "first_reveal": 110,
+            "last_reveal": 120,
+            "blocks_until_action": 10,
+            "hash": "0x3434",
+        }
+    ],
+}
+
+NO_PENDING_STATUS_SUMMARY = {
+    "current_block": 140,
+    "commit_reveal_enabled": True,
+    "reveal_period_epochs": 4,
+    "pending_commits": 0,
+    "pending_statuses": [],
+    "next_action": "NO_PENDING_COMMITS",
+    "commit_windows": [],
+}
+
+EMPTY_PENDING_COMMITS = {"commits": []}
+
+PENDING_COMMITS_READY = {
+    "commits": [
+        {
+            "hash": "0x1212",
+            "status": "READY TO REVEAL (5 blocks remaining)",
+        }
+    ]
+}
+
+PENDING_COMMITS_WAITING = {
+    "commits": [
+        {
+            "hash": "0x3434",
+            "status": "WAITING (10 blocks until reveal window)",
+        }
+    ]
+}
+
+SHOW_WEIGHTS = {0: 100}
+HYPERPARAMS_PAYLOAD = {"weights_version": 9}
+HYPERPARAMS_PAYLOAD_V4 = {"weights_version": 4}
+HYPERPARAMS_PAYLOAD_V3 = {"weights_version": 3}
+HYPERPARAMS_PAYLOAD_V2 = {"weights_version": 2}
+HYPERPARAMS_TEMPO = {"tempo": 360}
+SINGLE_WEIGHT = {0: 100}
+SALT_5 = "tempo-5"
+SALT_8 = "tempo-8"
+SALT_9 = "tempo-9"
+SALT_10 = "tempo-10"
 
 NON_MAPPING_STATUS_ERROR = "weights status output must be a mapping"
 NON_MAPPING_OR_TEXT_STATUS_ERROR = "weights status output must be a mapping or recognizable status text"
@@ -230,25 +377,618 @@ class TestWeights:
 
     def test_status_text_help_parses_ready_status_text(self, weights: Weights) -> None:
         summary = weights.status_text_help(READY_STATUS_TEXT)
-        assert summary == {
-            "current_block": 125,
-            "commit_reveal_enabled": True,
-            "reveal_period_epochs": 3,
-            "pending_commits": 1,
-            "pending_statuses": ["READY TO REVEAL (5 blocks remaining)"],
-            "next_action": "REVEAL",
-            "commit_windows": [
-                {
-                    "index": 1,
-                    "status": "READY TO REVEAL (5 blocks remaining)",
-                    "commit_block": 100,
-                    "first_reveal": 120,
-                    "last_reveal": 130,
-                    "blocks_until_action": 5,
-                    "hash": "0x1212",
-                }
-            ],
+        assert summary == READY_STATUS_SUMMARY
+
+    def test_weights_validation_help_reports_missing_reads(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(12)
+        assert helpers["validated_reads"] == []
+        assert helpers["missing_reads"] == ["status", "hyperparams", "show", "pending_commits"]
+        assert helpers["validation_status"] == "missing"
+        assert helpers["validation_summary"] == (
+            "Weights verification on subnet 12 still needs status, hyperparams, show, and pending_commits output."
+        )
+        assert helpers["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+        assert helpers["next_validation_step"] == "agcli weights status --netuid 12"
+        assert helpers["workflow"]["status"] == "agcli weights status --netuid 12"
+        assert helpers["workflow"]["local_validation_tip"] == helpers["local_validation_tip"]
+        assert helpers["local_validation_tip"].count("inspect_localnet_scaffold_command") == 1
+        assert helpers["local_validation_tip"].count("inspect_doctor_command") == 1
+        assert "Docker and the local toolchain" in helpers["local_validation_tip"]
+
+    def test_weights_validation_help_reports_partial_reads(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            12,
+            status=READY_STATUS_TEXT,
+            hyperparams=HYPERPARAMS_PAYLOAD,
+        )
+        assert helpers["validated_reads"] == ["status", "hyperparams"]
+        assert helpers["missing_reads"] == ["show", "pending_commits"]
+        assert helpers["validation_status"] == "partial"
+        assert helpers["next_validation_step"] == "agcli weights show --netuid 12"
+        assert helpers["status_summary"] == READY_STATUS_SUMMARY
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == "agcli weights status --netuid 12"
+
+    def test_weights_validation_help_reports_ready_direct_set_snapshot(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            12,
+            weights=SINGLE_WEIGHT,
+            version_key=9,
+            status=DIRECT_SET_READY_STATUS_TEXT,
+            hyperparams=HYPERPARAMS_PAYLOAD,
+            show=SHOW_WEIGHTS,
+            pending_commits=EMPTY_PENDING_COMMITS,
+        )
+        assert helpers["validated_reads"] == ["status", "hyperparams", "show", "pending_commits"]
+        assert helpers["validation_status"] == "ready"
+        assert helpers["status_summary"] == DIRECT_SET_READY_STATUS_SUMMARY
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["recommended_command"] == "agcli weights set --netuid 12 --weights 0:100 --version-key 9"
+        assert helpers["next_validation_step"] == "agcli weights set --netuid 12 --weights 0:100 --version-key 9"
+
+    def test_weights_validation_help_with_commit_reveal_wait_uses_commit_reveal_command(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            9,
+            weights=SINGLE_WEIGHT,
+            salt=SALT_9,
+            version_key=4,
+            wait=True,
+            status=NO_PENDING_STATUS_TEXT,
+            hyperparams=HYPERPARAMS_PAYLOAD_V4,
+            show=SHOW_WEIGHTS,
+            pending_commits=EMPTY_PENDING_COMMITS,
+        )
+        assert helpers["status_summary"] == NO_PENDING_STATUS_SUMMARY
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["recommended_command"] == (
+            "agcli weights commit-reveal --netuid 9 --weights 0:100 --version-key 4 --wait"
+        )
+        assert helpers["next_validation_step"] == (
+            "agcli weights commit-reveal --netuid 9 --weights 0:100 --version-key 4 --wait"
+        )
+
+    def test_weights_snapshot_help_preserves_workflow_and_validation_fields(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(
+            5,
+            wallet="cold",
+            hotkey="validator",
+            weights=SINGLE_WEIGHT,
+            salt=SALT_5,
+            version_key=2,
+            status=WAITING_STATUS_TEXT,
+            show=SHOW_WEIGHTS,
+        )
+        assert helpers["workflow"]["status"] == "agcli --wallet cold --hotkey-name validator weights status --netuid 5"
+        assert helpers["workflow"]["local_validation_tip"] == helpers["local_validation_tip"]
+        assert helpers["validation_status"] == "partial"
+        assert helpers["validated_reads"] == ["status", "show"]
+        assert helpers["missing_reads"] == ["hyperparams", "pending_commits"]
+        assert helpers["local_validation_tip"].startswith("When you need a local reproduction")
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 5"
+        assert helpers["status_summary"] == WAITING_STATUS_SUMMARY
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["ready_command"] == (
+            "agcli weights reveal --netuid 5 --weights 0:100 --salt tempo-5 --version-key 2"
+        )
+
+    def test_weights_validation_help_surfaces_local_validation_tip(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(6)
+        assert helpers["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+
+    def test_weights_snapshot_help_surfaces_local_validation_tip(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(6)
+        assert helpers["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+        assert helpers["workflow"]["inspect_localnet_scaffold_command"] == "agcli localnet scaffold"
+        assert helpers["workflow"]["inspect_doctor_command"] == "agcli doctor"
+        assert helpers["inspect_localnet_scaffold_command"] == "agcli localnet scaffold"
+        assert helpers["inspect_doctor_command"] == "agcli doctor"
+        assert helpers["local_validation_tip"].count("inspect_localnet_scaffold_command") == 1
+        assert helpers["local_validation_tip"].count("inspect_doctor_command") == 1
+        assert "Docker and the local toolchain" in helpers["local_validation_tip"]
+        assert helpers["validation_status"] == "missing"
+        assert helpers["next_validation_step"] == "agcli weights status --netuid 6"
+        assert helpers["workflow"]["status"] == "agcli weights status --netuid 6"
+        assert helpers["show"] == "agcli weights show --netuid 6"
+        assert helpers["hyperparams"] == "agcli subnet hyperparams --netuid 6"
+        assert helpers["pending_commits"] == "agcli subnet commits --netuid 6"
+        assert helpers["validated_reads"] == []
+        assert helpers["missing_reads"] == ["status", "hyperparams", "show", "pending_commits"]
+        assert helpers["validation_summary"] == (
+            "Weights verification on subnet 6 still needs status, hyperparams, show, and pending_commits output."
+        )
+        assert helpers["workflow"] is not helpers
+        assert helpers["workflow"]["status_note"].startswith("weights status resolves the current hotkey")
+
+    def test_weights_snapshot_help_with_blank_payloads_is_missing(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(7, status="", show="", hyperparams="", pending_commits="")
+        assert helpers["validation_status"] == "missing"
+        assert helpers["validated_reads"] == []
+        assert helpers["next_validation_step"] == "agcli weights status --netuid 7"
+
+    def test_weights_snapshot_text_returns_summary_plus_next_step(self, weights: Weights) -> None:
+        text = weights.weights_snapshot_text(12, status=READY_STATUS_TEXT, hyperparams=HYPERPARAMS_TEMPO)
+        assert text == (
+            "Weights verification on subnet 12 has reads status, hyperparams; still missing show, pending_commits. "
+            "Next: agcli weights show --netuid 12 Local: "
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+
+    def test_weights_validation_text_returns_summary(self, weights: Weights) -> None:
+        text = weights.weights_validation_text(12, status=READY_STATUS_TEXT, show=SHOW_WEIGHTS)
+        assert text == (
+            "Weights verification on subnet 12 has reads status, show; still missing hyperparams, pending_commits. "
+            "Local: When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+
+    def test_weights_validation_text_aliases_include_local_validation_tip(self, weights: Weights) -> None:
+        kwargs = {"status": READY_STATUS_TEXT, "show": SHOW_WEIGHTS}
+        expected = weights.weights_validation_text(8, **kwargs)
+        assert "Local: When you need a local reproduction" in expected
+        assert weights.validation_text(8, **kwargs) == expected
+        assert weights.operator_validation_text(8, **kwargs) == expected
+        assert weights.operator_workflow_validation_text(8, **kwargs) == expected
+
+    def test_weights_snapshot_text_aliases_include_local_validation_tip(self, weights: Weights) -> None:
+        kwargs = {"status": READY_STATUS_TEXT, "show": SHOW_WEIGHTS}
+        expected = weights.weights_snapshot_text(8, **kwargs)
+        assert "Local: When you need a local reproduction" in expected
+        assert weights.snapshot_text(8, **kwargs) == expected
+        assert weights.operator_snapshot_text(8, **kwargs) == expected
+        assert weights.operator_workflow_snapshot_text(8, **kwargs) == expected
+
+    def test_weights_validation_help_uses_mapping_status_for_next_action(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            8,
+            weights=SINGLE_WEIGHT,
+            salt=SALT_8,
+            version_key=3,
+            status=READY_STATUS_MAPPING,
+            hyperparams=HYPERPARAMS_PAYLOAD_V3,
+            show=SHOW_WEIGHTS,
+            pending_commits=PENDING_COMMITS_READY,
+        )
+        assert helpers["status_summary"] == READY_STATUS_SUMMARY
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == (
+            "agcli weights reveal --netuid 8 --weights 0:100 --salt tempo-8 --version-key 3"
+        )
+        assert helpers["next_validation_step"] == (
+            "agcli weights reveal --netuid 8 --weights 0:100 --salt tempo-8 --version-key 3"
+        )
+
+    def test_weights_snapshot_help_without_status_keeps_workflow_only(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(8, weights=SINGLE_WEIGHT, salt=SALT_8, version_key=3)
+        assert "status_summary" not in helpers
+        assert "recommended_action" not in helpers
+        assert helpers["workflow"]["commit"] == "agcli weights commit --netuid 8 --weights 0:100 --salt tempo-8"
+        assert helpers["workflow"]["reveal"] == (
+            "agcli weights reveal --netuid 8 --weights 0:100 --salt tempo-8 --version-key 3"
+        )
+        assert helpers["next_validation_step"] == "agcli weights status --netuid 8"
+        assert helpers["inspect_set_param_command"] == "agcli subnet set-param --netuid 8"
+        assert helpers["inspect_admin_list_command"] == "agcli admin list"
+        assert helpers["explain_weights_command"] == "agcli explain weights"
+        assert helpers["explain_commit_reveal_command"] == "agcli explain commit-reveal"
+        assert helpers["inspect_probe_command"] == "agcli subnet probe --netuid 8"
+        assert helpers["inspect_serve_axon_command"] == "agcli serve axon --netuid 8 --ip <ip> --port <port>"
+        assert (
+            helpers["inspect_serve_prometheus_command"] == "agcli serve prometheus --netuid 8 --ip <ip> --port <port>"
+        )
+        assert helpers["inspect_serve_axon_tls_command"] == (
+            "agcli serve axon-tls --netuid 8 --ip <ip> --port <port> --cert <cert>"
+        )
+        assert helpers["inspect_serve_reset_command"] == "agcli serve reset --netuid 8"
+        assert helpers["inspect_watch_command"] == "agcli subnet watch --netuid 8"
+        assert helpers["inspect_monitor_command"] == "agcli subnet monitor --netuid 8 --json"
+        assert helpers["inspect_validator_endpoints_command"] == "agcli view axon --netuid 8"
+        assert helpers["inspect_miner_endpoints_command"] == "agcli view axon --netuid 8"
+        assert helpers["adjacent_workflows_note"]
+        assert helpers["status_note"]
+        assert helpers["show_note"]
+        assert helpers["pending_commits_note"]
+        assert helpers["hyperparams_note"]
+        assert helpers["set_weights_note"]
+        assert helpers["show_command"] == "agcli weights show --netuid 8"
+        assert helpers["inspect_chain_data_command"] == "agcli subnet show --netuid 8"
+        assert helpers["inspect_subnets_command"] == "agcli subnet list"
+        assert helpers["inspect_subnet_command"] == "agcli subnet show --netuid 8"
+        assert helpers["inspect_hyperparams_command"] == "agcli subnet hyperparams --netuid 8"
+        assert helpers["inspect_emissions_command"] == "agcli view emissions --netuid 8"
+        assert helpers["inspect_neuron_command"] == "agcli view neuron --netuid 8 --uid 0"
+        assert helpers["inspect_validators_command"] == "agcli view validators --netuid 8"
+        assert helpers["inspect_stake_command"] == "agcli stake list --netuid 8"
+        assert helpers["inspect_config_show_command"] == "agcli config show"
+        assert helpers["inspect_config_set_wallet_command"] == "agcli config set --key wallet --value <wallet-name>"
+        assert helpers["inspect_config_set_hotkey_command"] == "agcli config set --key hotkey --value <hotkey-name>"
+        assert helpers["inspect_wallet_show_command"] == "agcli wallet show --all"
+        assert helpers["inspect_wallet_current_command"] == "agcli wallet show"
+        assert helpers["inspect_wallet_associate_command"] == "agcli wallet associate-hotkey"
+        assert helpers["inspect_wallet_derive_command"] == "agcli wallet derive --input <pubkey-or-mnemonic>"
+        assert helpers["inspect_wallet_sign_command"] == "agcli wallet sign --message <message>"
+        assert helpers["inspect_wallet_verify_command"] == (
+            "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
+        )
+        assert helpers["inspect_hotkey_address_command"] == "agcli view axon --netuid <netuid> --hotkey-address <ss58>"
+        assert helpers["inspect_balance_command"] == "agcli balance"
+        assert helpers["inspect_stake_add_command"] == "agcli stake add --netuid 8 --amount <amount>"
+        assert helpers["inspect_validator_requirements_command"] == "agcli subnet hyperparams --netuid 8"
+        assert helpers["inspect_owner_param_list_command"] == "agcli subnet set-param --netuid 8 --param list"
+        assert helpers["inspect_admin_raw_command"] == "agcli admin raw --call <sudo-call>"
+        assert helpers["inspect_registration_cost_command"] == "agcli subnet cost --netuid 8"
+        assert helpers["inspect_register_neuron_command"] == "agcli subnet register-neuron --netuid 8"
+        assert helpers["inspect_pow_register_command"] == "agcli subnet pow --netuid 8"
+        assert helpers["inspect_snipe_register_command"] == "agcli subnet snipe --netuid 8"
+        assert helpers["inspect_health_command"] == "agcli subnet health --netuid 8"
+        assert helpers["inspect_axon_command"] == "agcli view axon --netuid 8"
+
+    def test_weights_snapshot_help_rejects_empty_wallet(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="wallet cannot be empty"):
+            weights.weights_snapshot_help(8, wallet="   ")
+
+    def test_weights_snapshot_help_rejects_empty_hotkey(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="hotkey cannot be empty"):
+            weights.weights_snapshot_help(8, hotkey="   ")
+
+    def test_weights_validation_help_rejects_blank_salt_when_weights_present(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="salt cannot be empty"):
+            weights.weights_validation_help(8, weights={0: 100}, salt="   ")
+
+    def test_weights_validation_help_rejects_blank_status_text(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(8, status="   ", show=SHOW_WEIGHTS)
+        assert helpers["validation_status"] == "partial"
+        assert helpers["validated_reads"] == ["show"]
+        assert helpers["next_validation_step"] == "agcli weights status --netuid 8"
+
+    def test_weights_validation_help_blank_status_text_alias_is_partial(self, weights: Weights) -> None:
+        helpers = weights.validation_help(8, status="   ", show=SHOW_WEIGHTS)
+        assert helpers["validation_status"] == "partial"
+        assert helpers["validated_reads"] == ["show"]
+        assert helpers["next_validation_step"] == "agcli weights status --netuid 8"
+
+    def test_weights_validation_help_aliases_match_primary_helpers(self, weights: Weights) -> None:
+        kwargs = {
+            "weights": SINGLE_WEIGHT,
+            "salt": SALT_8,
+            "version_key": 3,
+            "status": READY_STATUS_TEXT,
+            "show": SHOW_WEIGHTS,
+            "hyperparams": HYPERPARAMS_PAYLOAD_V3,
+            "pending_commits": PENDING_COMMITS_READY,
         }
+        assert weights.validation_help(8, **kwargs) == weights.weights_validation_help(8, **kwargs)
+        assert weights.snapshot_help(8, **kwargs) == weights.weights_snapshot_help(8, **kwargs)
+        assert weights.operator_validation_help(8, **kwargs) == weights.weights_validation_help(8, **kwargs)
+        assert weights.operator_snapshot_help(8, **kwargs) == weights.weights_snapshot_help(8, **kwargs)
+        assert weights.operator_workflow_validation_help(8, **kwargs) == weights.weights_validation_help(8, **kwargs)
+        assert weights.operator_workflow_snapshot_help(8, **kwargs) == weights.weights_snapshot_help(8, **kwargs)
+
+    def test_weights_validation_text_aliases_match_primary_helpers(self, weights: Weights) -> None:
+        kwargs = {"status": READY_STATUS_TEXT, "show": SHOW_WEIGHTS}
+        assert weights.validation_text(8, **kwargs) == weights.weights_validation_text(8, **kwargs)
+        assert weights.snapshot_text(8, **kwargs) == weights.weights_snapshot_text(8, **kwargs)
+        assert weights.operator_validation_text(8, **kwargs) == weights.weights_validation_text(8, **kwargs)
+        assert weights.operator_snapshot_text(8, **kwargs) == weights.weights_snapshot_text(8, **kwargs)
+        assert weights.operator_workflow_validation_text(8, **kwargs) == weights.weights_validation_text(8, **kwargs)
+        assert weights.operator_workflow_snapshot_text(8, **kwargs) == weights.weights_snapshot_text(8, **kwargs)
+
+    def test_weights_validation_help_rejects_unrecognized_non_blank_status_text(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="weights status output must be a mapping or recognizable status text"):
+            weights.weights_validation_help(8, status=BAD_STATUS_TEXT, show=SHOW_WEIGHTS)
+
+    def test_weights_validation_help_uses_mapping_status_summary_for_next_action(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            8,
+            weights=SINGLE_WEIGHT,
+            salt=SALT_8,
+            version_key=3,
+            status=READY_STATUS_SUMMARY,
+            hyperparams=HYPERPARAMS_PAYLOAD_V3,
+            show=SHOW_WEIGHTS,
+            pending_commits=PENDING_COMMITS_READY,
+        )
+        assert helpers["status_summary"] == READY_STATUS_SUMMARY
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == (
+            "agcli weights reveal --netuid 8 --weights 0:100 --salt tempo-8 --version-key 3"
+        )
+        assert helpers["next_validation_step"] == (
+            "agcli weights reveal --netuid 8 --weights 0:100 --salt tempo-8 --version-key 3"
+        )
+
+    def test_weights_validation_help_rejects_status_mapping_without_block_field(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status block must be an integer"):
+            weights.weights_validation_help(
+                8,
+                status={"commit_reveal_enabled": True, "reveal_period_epochs": 3, "commits": []},
+                show=SHOW_WEIGHTS,
+            )
+
+    def test_weights_validation_help_rejects_status_mapping_without_bool_commit_reveal(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status commit_reveal_enabled must be a boolean"):
+            weights.weights_validation_help(
+                8,
+                status={"block": 1, "commit_reveal_enabled": "yes", "reveal_period_epochs": 3, "commits": []},
+                show=SHOW_WEIGHTS,
+            )
+
+    def test_weights_validation_help_rejects_status_mapping_without_reveal_period(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status reveal_period_epochs must be an integer"):
+            weights.weights_validation_help(
+                8,
+                status={"block": 1, "commit_reveal_enabled": True, "commits": []},
+                show=SHOW_WEIGHTS,
+            )
+
+    def test_weights_validation_help_accepts_mapping_with_pending_commits_key(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            8,
+            status={
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "pending_commits": [{"status": "READY TO REVEAL", "commit_block": 100}],
+            },
+            hyperparams=HYPERPARAMS_PAYLOAD_V3,
+            show=SHOW_WEIGHTS,
+            pending_commits=PENDING_COMMITS_READY,
+        )
+        assert helpers["status_summary"]["pending_commits"] == 1
+        assert helpers["validated_reads"] == ["status", "hyperparams", "show", "pending_commits"]
+        assert helpers["validation_status"] == "ready"
+
+    def test_weights_validation_help_accepts_non_string_status_mapping_keys(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            8,
+            status={"block": 125, "commit_reveal_enabled": False, "reveal_period_epochs": 0, "commits": []},
+            show=SHOW_WEIGHTS,
+        )
+        assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert helpers["validated_reads"] == ["status", "show"]
+
+    def test_weights_validation_help_accepts_waiting_mapping_summary(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            5,
+            weights=SINGLE_WEIGHT,
+            salt=SALT_5,
+            version_key=2,
+            status=WAITING_STATUS_MAPPING,
+            show=SHOW_WEIGHTS,
+        )
+        assert helpers["status_summary"] == WAITING_STATUS_SUMMARY
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["ready_command"] == (
+            "agcli weights reveal --netuid 5 --weights 0:100 --salt tempo-5 --version-key 2"
+        )
+
+    def test_weights_snapshot_help_surfaces_selected_workflow_commands(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(6)
+        assert helpers["status"] == "agcli weights status --netuid 6"
+        assert helpers["show"] == "agcli weights show --netuid 6"
+        assert helpers["hyperparams"] == "agcli subnet hyperparams --netuid 6"
+        assert helpers["pending_commits"] == "agcli subnet commits --netuid 6"
+
+    def test_weights_validation_help_surfaces_selected_workflow_commands(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(6)
+        assert helpers["status"] == "agcli weights status --netuid 6"
+        assert helpers["show"] == "agcli weights show --netuid 6"
+        assert helpers["hyperparams"] == "agcli subnet hyperparams --netuid 6"
+        assert helpers["pending_commits"] == "agcli subnet commits --netuid 6"
+
+    def test_weights_snapshot_help_copies_next_action_subset(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(
+            8,
+            weights=SINGLE_WEIGHT,
+            salt=SALT_8,
+            version_key=3,
+            status=READY_STATUS_TEXT,
+            hyperparams=HYPERPARAMS_PAYLOAD_V3,
+            show=SHOW_WEIGHTS,
+            pending_commits=PENDING_COMMITS_READY,
+        )
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == (
+            "agcli weights reveal --netuid 8 --weights 0:100 --salt tempo-8 --version-key 3"
+        )
+        assert helpers["reason"] == "A pending commit is ready to reveal now."
+        assert helpers["next_step"] == "Run recommended_command now to reveal the pending commit."
+
+    def test_weights_validation_help_blank_pending_commits_string_is_missing(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(8, pending_commits="   ")
+        assert helpers["validation_status"] == "missing"
+        assert helpers["validated_reads"] == []
+
+    def test_weights_validation_help_blank_hyperparams_string_is_missing(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(8, hyperparams="   ")
+        assert helpers["validation_status"] == "missing"
+        assert helpers["validated_reads"] == []
+
+    def test_weights_validation_help_blank_show_string_is_missing(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(8, show="   ")
+        assert helpers["validation_status"] == "missing"
+        assert helpers["validated_reads"] == []
+
+    def test_weights_snapshot_help_uses_status_summary_for_next_action(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(
+            8,
+            weights=SINGLE_WEIGHT,
+            salt=SALT_8,
+            version_key=3,
+            status=READY_STATUS_SUMMARY,
+            hyperparams=HYPERPARAMS_PAYLOAD_V3,
+            show=SHOW_WEIGHTS,
+            pending_commits=PENDING_COMMITS_READY,
+        )
+        assert helpers["status_summary"] == READY_STATUS_SUMMARY
+        assert helpers["recommended_command"] == (
+            "agcli weights reveal --netuid 8 --weights 0:100 --salt tempo-8 --version-key 3"
+        )
+
+    def test_weights_validation_help_accepts_waiting_pending_commits_payload(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            5,
+            status=WAITING_STATUS_TEXT,
+            pending_commits=PENDING_COMMITS_WAITING,
+        )
+        assert helpers["validated_reads"] == ["status", "pending_commits"]
+        assert helpers["next_validation_step"] == "agcli subnet hyperparams --netuid 5"
+
+    def test_weights_snapshot_help_handles_empty_pending_commits_mapping(self, weights: Weights) -> None:
+        helpers = weights.weights_snapshot_help(
+            12,
+            status=DIRECT_SET_READY_STATUS_TEXT,
+            hyperparams=HYPERPARAMS_PAYLOAD,
+            show=SHOW_WEIGHTS,
+            pending_commits=EMPTY_PENDING_COMMITS,
+        )
+        assert helpers["validation_status"] == "ready"
+        assert helpers["validated_reads"] == ["status", "hyperparams", "show", "pending_commits"]
+
+    def test_weights_validation_help_alias_with_wait_matches_primary(self, weights: Weights) -> None:
+        kwargs = {
+            "weights": SINGLE_WEIGHT,
+            "salt": SALT_9,
+            "version_key": 4,
+            "wait": True,
+            "status": NO_PENDING_STATUS_TEXT,
+            "hyperparams": HYPERPARAMS_PAYLOAD_V4,
+            "show": SHOW_WEIGHTS,
+            "pending_commits": EMPTY_PENDING_COMMITS,
+        }
+        assert weights.validation_help(9, **kwargs) == weights.weights_validation_help(9, **kwargs)
+
+    def test_weights_snapshot_help_alias_with_wait_matches_primary(self, weights: Weights) -> None:
+        kwargs = {
+            "weights": SINGLE_WEIGHT,
+            "salt": SALT_9,
+            "version_key": 4,
+            "wait": True,
+            "status": NO_PENDING_STATUS_TEXT,
+            "hyperparams": HYPERPARAMS_PAYLOAD_V4,
+            "show": SHOW_WEIGHTS,
+            "pending_commits": EMPTY_PENDING_COMMITS,
+        }
+        assert weights.snapshot_help(9, **kwargs) == weights.weights_snapshot_help(9, **kwargs)
+
+    def test_weights_validation_help_rejects_unrecognized_status_mapping_type(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status must be a mapping"):
+            weights._extract_status_summary(123)
+
+    def test_weights_validation_help_rejects_blank_status_for_text_helper(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status text cannot be empty"):
+            weights.status_text_help("   ")
+
+    def test_weights_validation_help_rejects_blank_status_for_text_runbook_helper(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status text cannot be empty"):
+            weights.status_text_runbook_help(8, "   ")
+
+    def test_weights_validation_help_rejects_blank_status_for_text_next_action_helper(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status text cannot be empty"):
+            weights.status_text_next_action_help(8, "   ")
+
+    def test_weights_validation_help_rejects_blank_status_for_text_troubleshoot_helper(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="status text cannot be empty"):
+            weights.status_text_troubleshoot_help(8, "   ", "RevealTooEarly")
+
+    def test_weights_validation_help_rejects_bad_status_text_for_text_helper(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="weights status output must be a mapping or recognizable status text"):
+            weights.status_text_help(BAD_STATUS_TEXT)
+
+    def test_weights_validation_help_rejects_non_mapping_status_summary(self, weights: Weights) -> None:
+        with pytest.raises(ValueError, match="weights status output must be a mapping or recognizable status text"):
+            weights.weights_validation_help(8, status=BAD_STATUS_TEXT, show={0: 100})
+
+    def test_weights_validation_help_keeps_prefixed_workflow_commands(self, weights: Weights) -> None:
+        helpers = weights.weights_validation_help(
+            5,
+            wallet="cold",
+            hotkey="validator",
+            weights={0: 100},
+            salt="tempo-5",
+            version_key=2,
+        )
+        assert helpers["workflow"]["status"] == "agcli --wallet cold --hotkey-name validator weights status --netuid 5"
+        assert helpers["workflow"]["set"] == (
+            "agcli --wallet cold --hotkey-name validator weights set --netuid 5 --weights 0:100 --version-key 2"
+        )
+        assert helpers["workflow"]["commit_reveal"] == (
+            "agcli --wallet cold --hotkey-name validator weights commit-reveal --netuid 5 "
+            "--weights 0:100 --version-key 2"
+        )
+        assert helpers["status"] == "agcli --wallet cold --hotkey-name validator weights status --netuid 5"
+        assert helpers["show"] == "agcli weights show --netuid 5"
+        assert helpers["pending_commits"] == "agcli subnet commits --netuid 5"
+        assert helpers["hyperparams"] == "agcli subnet hyperparams --netuid 5"
+        assert helpers["inspect_set_param_command"] == "agcli subnet set-param --netuid 5"
+        assert helpers["inspect_admin_list_command"] == "agcli admin list"
+        assert helpers["explain_weights_command"] == "agcli explain weights"
+        assert helpers["explain_commit_reveal_command"] == "agcli explain commit-reveal"
+        assert helpers["inspect_probe_command"] == "agcli subnet probe --netuid 5"
+        assert helpers["inspect_serve_axon_command"] == "agcli serve axon --netuid 5 --ip <ip> --port <port>"
+        assert (
+            helpers["inspect_serve_prometheus_command"] == "agcli serve prometheus --netuid 5 --ip <ip> --port <port>"
+        )
+        assert helpers["inspect_serve_axon_tls_command"] == (
+            "agcli serve axon-tls --netuid 5 --ip <ip> --port <port> --cert <cert>"
+        )
+        assert helpers["inspect_serve_reset_command"] == "agcli serve reset --netuid 5"
+        assert helpers["inspect_watch_command"] == "agcli subnet watch --netuid 5"
+        assert helpers["inspect_monitor_command"] == "agcli subnet monitor --netuid 5 --json"
+        assert helpers["inspect_validator_endpoints_command"] == "agcli view axon --netuid 5"
+        assert helpers["inspect_miner_endpoints_command"] == "agcli view axon --netuid 5"
+        assert helpers["adjacent_workflows_note"]
+        assert helpers["status_note"]
+        assert helpers["show_note"]
+        assert helpers["pending_commits_note"]
+        assert helpers["hyperparams_note"]
+        assert helpers["set_weights_note"]
+        assert helpers["show_command"] == "agcli weights show --netuid 5"
+        assert helpers["inspect_chain_data_command"] == "agcli subnet show --netuid 5"
+        assert helpers["inspect_subnets_command"] == "agcli subnet list"
+        assert helpers["inspect_subnet_command"] == "agcli subnet show --netuid 5"
+        assert helpers["inspect_hyperparams_command"] == "agcli subnet hyperparams --netuid 5"
+        assert helpers["inspect_emissions_command"] == "agcli view emissions --netuid 5"
+        assert helpers["inspect_neuron_command"] == "agcli view neuron --netuid 5 --uid 0"
+        assert helpers["inspect_validators_command"] == "agcli view validators --netuid 5"
+        assert helpers["inspect_stake_command"] == "agcli stake list --netuid 5"
+        assert helpers["inspect_config_show_command"] == "agcli config show"
+        assert helpers["inspect_config_set_wallet_command"] == "agcli config set --key wallet --value <wallet-name>"
+        assert helpers["inspect_config_set_hotkey_command"] == "agcli config set --key hotkey --value <hotkey-name>"
+        assert helpers["inspect_wallet_show_command"] == "agcli wallet show --all"
+        assert helpers["inspect_wallet_current_command"] == "agcli wallet show"
+        assert helpers["inspect_wallet_associate_command"] == "agcli wallet associate-hotkey"
+        assert helpers["inspect_wallet_derive_command"] == "agcli wallet derive --input <pubkey-or-mnemonic>"
+        assert helpers["inspect_wallet_sign_command"] == "agcli wallet sign --message <message>"
+        assert helpers["inspect_wallet_verify_command"] == (
+            "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
+        )
+        assert helpers["inspect_hotkey_address_command"] == "agcli view axon --netuid <netuid> --hotkey-address <ss58>"
+        assert helpers["inspect_balance_command"] == "agcli balance"
+        assert helpers["inspect_stake_add_command"] == "agcli stake add --netuid 5 --amount <amount>"
+        assert helpers["inspect_validator_requirements_command"] == "agcli subnet hyperparams --netuid 5"
+        assert helpers["inspect_owner_param_list_command"] == "agcli subnet set-param --netuid 5 --param list"
+        assert helpers["inspect_admin_raw_command"] == "agcli admin raw --call <sudo-call>"
+        assert helpers["inspect_registration_cost_command"] == "agcli subnet cost --netuid 5"
+        assert helpers["inspect_register_neuron_command"] == "agcli subnet register-neuron --netuid 5"
+        assert helpers["inspect_pow_register_command"] == "agcli subnet pow --netuid 5"
+        assert helpers["inspect_snipe_register_command"] == "agcli subnet snipe --netuid 5"
+        assert helpers["inspect_health_command"] == "agcli subnet health --netuid 5"
+        assert helpers["inspect_axon_command"] == "agcli view axon --netuid 5"
 
     def test_status_text_help_parses_no_pending_commits_text(self, weights: Weights) -> None:
         summary = weights.status_text_help(NO_PENDING_STATUS_TEXT)
@@ -282,7 +1022,27 @@ class TestWeights:
     def test_status_runbook_help_accepts_text_input(self, weights: Weights) -> None:
         runbook = weights.status_runbook_help(5, READY_STATUS_TEXT)
         assert runbook["status"] == "agcli weights status --netuid 5"
-        assert runbook["raw_status"] == READY_STATUS_TEXT
+        assert runbook["raw_status"] == READY_STATUS_TEXT.strip()
+        assert runbook["summary"]["next_action"] == "REVEAL"
+        assert runbook["recommended_action"] == "REVEAL"
+        assert runbook["recommended_command"] == "agcli weights status --netuid 5"
+        assert runbook["next_step"] == (
+            "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
+        )
+        assert runbook["reason"] == (
+            "A pending commit is ready to reveal now; provide the original weights and salt "
+            "to build the reveal command."
+        )
+        assert runbook["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+        assert runbook["blocks_until_action"] == 5
+
+    def test_status_runbook_help_strips_text_raw_status(self, weights: Weights) -> None:
+        runbook = weights.status_runbook_help(5, "\n" + READY_STATUS_TEXT + "\n")
+        assert runbook["raw_status"] == READY_STATUS_TEXT.strip()
         assert runbook["summary"]["next_action"] == "REVEAL"
 
     def test_status_text_runbook_help_returns_status_and_summary(self, weights: Weights) -> None:
@@ -299,6 +1059,15 @@ class TestWeights:
                 "next_action": "NO_PENDING_COMMITS",
                 "commit_windows": [],
             },
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
+            "recommended_action": "NO_PENDING_COMMITS",
+            "recommended_command": "agcli weights status --netuid 7",
+            "reason": "No commit is pending and this subnet uses commit-reveal.",
+            "next_step": "Provide fresh weights, then rerun recommended_command to build the next commit command.",
         }
 
     def test_status_text_runbook_help_rejects_non_string_input(self, weights: Weights) -> None:
@@ -328,6 +1097,13 @@ class TestWeights:
                 "agcli weights reveal-mechanism --netuid 1 --mechanism-id 4 --weights 0:100,1:200 --salt abc "
                 "--version-key 2"
             ),
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
         }
 
     def test_mechanism_workflow_help_derives_hash_when_missing(self, weights: Weights) -> None:
@@ -348,6 +1124,13 @@ class TestWeights:
             ),
             "reveal_mechanism": (
                 "agcli weights reveal-mechanism --netuid 1 --mechanism-id 4 --weights 0:100 --salt abc"
+            ),
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
             ),
         }
 
@@ -372,6 +1155,13 @@ class TestWeights:
                 "agcli weights commit-timelocked --netuid 1 --weights 0:100,1:200 --round 42 --salt abc"
             ),
             "reveal": "agcli weights reveal --netuid 1 --weights 0:100,1:200 --salt abc --version-key 2",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
         }
 
     def test_timelocked_workflow_help_omits_hash_when_salt_missing(self, weights: Weights) -> None:
@@ -381,6 +1171,9 @@ class TestWeights:
             "status": "agcli weights status --netuid 1",
             "set": "agcli weights set --netuid 1 --weights 0:100",
             "round": 42,
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": weights._local_validation_tip(),
         }
 
     def test_commit_reveal_payload_help_returns_hash_and_salt_u16(self, weights: Weights) -> None:
@@ -423,6 +1216,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 7",
             "inspect_stake_command": "agcli stake list --netuid 7",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -431,6 +1226,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 7 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 7",
@@ -438,6 +1234,8 @@ class TestWeights:
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
             "inspect_set_param_command": "agcli subnet set-param --netuid 7",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 7",
@@ -455,15 +1253,23 @@ class TestWeights:
             "inspect_validator_endpoints_command": "agcli view axon --netuid 7",
             "inspect_watch_command": "agcli subnet watch --netuid 7",
             "inspect_monitor_command": "agcli subnet monitor --netuid 7 --json",
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
             "adjacent_workflows_note": (
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -472,10 +1278,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
             "adjacent_recovery_note": (
                 "If the weights-specific retry path still looks wrong, pivot to show_command for live on-chain "
@@ -483,14 +1291,16 @@ class TestWeights:
                 "inspect_metagraph_command, inspect_chain_data_command, inspect_emissions_command, and "
                 "inspect_monitor_command for live subnet UIDs/state drift, inspect_neuron_command for per-UID member "
                 "detail after metagraph/monitor checks, inspect_config_show_command, "
+                "inspect_config_set_wallet_command, inspect_config_set_hotkey_command, "
                 "inspect_wallet_show_command, inspect_wallet_current_command, inspect_wallet_associate_command, "
                 "inspect_wallet_derive_command, inspect_wallet_sign_command, inspect_wallet_verify_command, "
-                "inspect_balance_command, "
+                "inspect_hotkey_address_command, inspect_balance_command, "
                 "inspect_validators_command, inspect_stake_command, inspect_stake_add_command, "
-                "and inspect_validator_requirements_command for wallet selector inspection, wallet inventory plus "
-                "selected coldkey/hotkey identity confirmation, hotkey association recovery, manual address "
-                "derivation checks, signature generation, signature verification, coldkey funding, validator "
-                "readiness, "
+                "and inspect_validator_requirements_command for wallet selector inspection, persisted selector "
+                "correction, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey association "
+                "recovery, manual address "
+                "derivation checks, explicit hotkey-address confirmation, signature generation, signature "
+                "verification, coldkey funding, validator readiness, "
                 "stake top-ups, or validator threshold checks, "
                 "inspect_hyperparams_command plus "
                 "inspect_owner_param_list_command, inspect_set_param_command, inspect_admin_list_command, "
@@ -504,9 +1314,12 @@ class TestWeights:
                 "inspect_miner_endpoints_command, and inspect_validator_endpoints_command for serve retries, "
                 "TLS serve recovery, prometheus recovery, endpoint recovery, or serve/endpoint verification, "
                 "inspect_watch_command plus inspect_monitor_command for live UID/state drift, "
-                "explain_weights_command plus "
-                "explain_commit_reveal_command for copy-pasteable concept refreshers, inspect_subnets_command for "
-                "available netuid discovery, and inspect_subnet_command for the current subnet summary."
+                "inspect_localnet_scaffold_command plus inspect_doctor_command for Docker/local runtime readiness "
+                "before local weight validation, explain_weights_command plus explain_commit_reveal_command for "
+                "copy-pasteable concept refreshers, inspect_subnets_command for available netuid discovery, and "
+                "inspect_subnet_command for the current subnet summary. Use inspect_localnet_scaffold_command to "
+                "bootstrap a local chain and inspect_doctor_command to confirm the host is ready before retrying "
+                "local commit-reveal validation."
             ),
             "preflight_note": (
                 "Inspect weights status and subnet hyperparams before commit/reveal so the reveal window, "
@@ -610,10 +1423,13 @@ class TestWeights:
         assert helpers["reveal_command"] == (
             "agcli weights reveal --netuid 97 --weights 0:100 --salt stuck-salt --version-key 6"
         )
-        assert helpers["likely_cause"] == "The runtime returned a generic reveal-side custom error."
+        assert helpers["likely_cause"] == (
+            "The runtime returned a generic reveal-side custom error that often masks another commit-state condition."
+        )
         assert helpers["recovery_reason"] == (
             "A previous commit can still be revealed if its original weights and salt are preserved."
         )
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
 
     def test_troubleshoot_unrevealed_commit_help_allows_version_key_override(
         self, weights: Weights, tmp_path: Path
@@ -694,11 +1510,103 @@ class TestWeights:
         assert helpers["pending_commits_note"].startswith("If wallet-specific status")
         assert helpers["next_step"] == "Retry reveal with the exact saved reveal_command from this state record."
 
-    def test_troubleshoot_unrevealed_commit_help_includes_commit_state_commands_when_status_is_provided_without_error(
+    def test_troubleshoot_unrevealed_commit_help_keeps_saved_reveal_guidance_for_reveal_too_early(
         self, weights: Weights, tmp_path: Path
     ) -> None:
         path = tmp_path / "weights-state.json"
         weights.save_commit_reveal_state_help(path, 9, "0:100", "abc", version_key=4)
+        helpers = weights.troubleshoot_unrevealed_commit_help(path, error="RevealTooEarly")
+        assert helpers["likely_cause"] == "The reveal window has not opened yet for the pending commit."
+        assert helpers["next_step"] == (
+            "Keep the saved state record, then retry the exact saved reveal_command when the reveal window opens."
+        )
+        assert helpers["reveal_command"] == (
+            "agcli weights reveal --netuid 9 --weights 0:100 --salt abc --version-key 4"
+        )
+        assert helpers["inspect_status_command"] == "agcli weights status --netuid 9"
+        assert helpers["inspect_pending_commits_command"] == "agcli subnet commits --netuid 9"
+        assert helpers["commit_state_recovery_note"] == (
+            "Run inspect_pending_commits_command to inspect the current pending commits on-chain, then compare "
+            "that output with the saved state record and inspect_status_command before retrying the saved "
+            "reveal_command."
+        )
+        assert helpers["preflight_note"].startswith("Inspect weights status and subnet hyperparams")
+
+    def test_troubleshoot_unrevealed_commit_help_waits_for_matching_commit_when_reveal_too_early(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 8, "0:100", "3434")
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="RevealTooEarly",
+            status={
+                "block": 100,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 2,
+                "commits": [
+                    {
+                        "status": "WAITING (10 blocks until reveal window)",
+                        "commit_block": 90,
+                        "first_reveal": 110,
+                        "last_reveal": 120,
+                        "blocks_until_action": 10,
+                        "hash": saved["hash"],
+                    }
+                ],
+            },
+        )
+        assert helpers["saved_hash_matches_pending_commit"] is True
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["recommended_command"] == saved["inspect_status_command"]
+        assert helpers["ready_command"] == saved["reveal_command"]
+        assert helpers["timing_note"] == "Wait about 10 more blocks, then check status again."
+        assert helpers["next_step"] == (
+            "The saved hash already matches the live pending commit. Wait for the reveal window, then retry the saved "
+            "reveal_command instead of creating a fresh commit."
+        )
+        assert "stale_state_detected" not in helpers
+        assert helpers["status_summary"]["next_action"] == "WAIT"
+
+    def test_troubleshoot_unrevealed_commit_help_uses_saved_reveal_now_when_status_shows_ready_after_reveal_too_early(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 5, "0:100", "abc")
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="RevealTooEarly",
+            status={
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "status": "READY TO REVEAL (5 blocks remaining)",
+                        "commit_block": 100,
+                        "first_reveal": 120,
+                        "last_reveal": 130,
+                        "blocks_until_action": 5,
+                        "hash": saved["hash"],
+                    }
+                ],
+            },
+        )
+        assert helpers["saved_hash_matches_pending_commit"] is True
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == saved["reveal_command"]
+        assert helpers["reason"] == "The saved commit still matches the live pending commit and is ready to reveal now."
+        assert helpers["next_step"] == (
+            "The saved hash already matches the live pending commit. Retry the exact saved reveal_command instead of "
+            "creating a fresh commit."
+        )
+        assert "stale_state_detected" not in helpers
+
+    def test_troubleshoot_unrevealed_commit_help_includes_commit_state_commands_when_status_is_provided_without_error(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 9, "0:100", "abc", version_key=4)
         helpers = weights.troubleshoot_unrevealed_commit_help(path, status=NO_PENDING_STATUS_TEXT)
         assert helpers["inspect_status_command"] == "agcli weights status --netuid 9"
         assert helpers["inspect_pending_commits_command"] == "agcli subnet commits --netuid 9"
@@ -708,6 +1616,100 @@ class TestWeights:
             "reveal_command."
         )
         assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["recommended_command"] == saved["commit_command"]
+        assert helpers["reason"] == (
+            "No matching pending commit is visible on-chain for this saved state, so a fresh commit is required."
+        )
+
+    def test_troubleshoot_unrevealed_commit_help_recommends_saved_reveal_when_matching_commit_is_ready(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 5, "0:100", "abc")
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            status={
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "status": "READY TO REVEAL (5 blocks remaining)",
+                        "commit_block": 100,
+                        "first_reveal": 120,
+                        "last_reveal": 130,
+                        "blocks_until_action": 5,
+                        "hash": saved["hash"],
+                    }
+                ],
+            },
+        )
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == saved["reveal_command"]
+        assert helpers["reason"] == "The saved commit still matches the live pending commit and is ready to reveal now."
+
+    def test_troubleshoot_unrevealed_commit_help_recommends_wait_when_matching_commit_is_waiting(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 8, "0:100", "3434")
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            status={
+                "block": 100,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 2,
+                "commits": [
+                    {
+                        "status": "WAITING (10 blocks until reveal window)",
+                        "commit_block": 90,
+                        "first_reveal": 110,
+                        "last_reveal": 120,
+                        "blocks_until_action": 10,
+                        "hash": saved["hash"],
+                    }
+                ],
+            },
+        )
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["recommended_command"] == saved["inspect_status_command"]
+        assert helpers["ready_command"] == saved["reveal_command"]
+        assert helpers["reason"] == (
+            "The saved commit still matches the live pending commit, but the reveal window is not open yet."
+        )
+        assert helpers["timing_note"] == "Wait about 10 more blocks, then check status again."
+
+    def test_troubleshoot_unrevealed_commit_help_recommends_inspection_when_pending_hash_differs(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        weights.save_commit_reveal_state_help(path, 9, "0:100", "abc", version_key=4)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            status={
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "status": "READY TO REVEAL (5 blocks remaining)",
+                        "commit_block": 100,
+                        "first_reveal": 120,
+                        "last_reveal": 130,
+                        "blocks_until_action": 5,
+                        "hash": "0x9999",
+                    }
+                ],
+            },
+        )
+        assert helpers["recommended_action"] == "INSPECT"
+        assert helpers["recommended_command"] == "agcli subnet commits --netuid 9"
+        assert helpers["reason"] == (
+            "A different pending commit is currently visible on-chain, so inspect it before reusing or replacing the "
+            "saved reveal state."
+        )
+        assert helpers["saved_hash_matches_pending_commit"] is False
 
     def test_troubleshoot_unrevealed_commit_help_marks_missing_commit_as_stale_when_status_has_no_pending_commit(
         self, weights: Weights, tmp_path: Path
@@ -807,6 +1809,79 @@ class TestWeights:
             "creating a fresh commit."
         )
 
+    def test_troubleshoot_unrevealed_commit_help_prefers_saved_reveal_for_custom_error_16_when_hash_matches_ready(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 13, "0:100", "ready-saved", version_key=6)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="Custom error: 16",
+            status={
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "status": "READY TO REVEAL (4 blocks remaining)",
+                        "commit_block": 100,
+                        "first_reveal": 120,
+                        "last_reveal": 130,
+                        "blocks_until_action": 4,
+                        "hash": saved["hash"],
+                    }
+                ],
+            },
+        )
+        assert helpers["likely_cause"] == (
+            "The runtime returned a generic reveal-side custom error that often masks another commit-state condition."
+        )
+        assert helpers["saved_hash_matches_pending_commit"] is True
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == saved["reveal_command"]
+        assert helpers["next_step"] == (
+            "The saved hash already matches the live pending commit. Retry the exact saved reveal_command instead of "
+            "creating a fresh commit."
+        )
+        assert "stale_state_detected" not in helpers
+
+    def test_troubleshoot_unrevealed_commit_help_prefers_wait_for_custom_error_16_when_hash_matches_waiting(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 14, "0:100", "wait-saved", version_key=7)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="Custom error: 16",
+            status={
+                "block": 100,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 2,
+                "commits": [
+                    {
+                        "status": "WAITING (9 blocks until reveal window)",
+                        "commit_block": 90,
+                        "first_reveal": 109,
+                        "last_reveal": 119,
+                        "blocks_until_action": 9,
+                        "hash": saved["hash"],
+                    }
+                ],
+            },
+        )
+        assert helpers["likely_cause"] == (
+            "The runtime returned a generic reveal-side custom error that often masks another commit-state condition."
+        )
+        assert helpers["saved_hash_matches_pending_commit"] is True
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["recommended_command"] == saved["inspect_status_command"]
+        assert helpers["ready_command"] == saved["reveal_command"]
+        assert helpers["next_step"] == (
+            "The saved hash already matches the live pending commit. Wait for the reveal window, then retry the saved "
+            "reveal_command instead of creating a fresh commit."
+        )
+        assert "stale_state_detected" not in helpers
+
     def test_troubleshoot_unrevealed_commit_help_promotes_matching_waiting_commit_when_another_commit_is_ready(
         self, weights: Weights, tmp_path: Path
     ) -> None:
@@ -852,21 +1927,207 @@ class TestWeights:
         assert helpers["matching_pending_commits"] == [helpers["pending_commit"]]
         assert helpers["matching_pending_commit_count"] == 1
         assert helpers["matching_pending_commit_indexes"] == [2]
-        assert helpers["matching_pending_commit_note"] == (
-            "Several pending commits exist on-chain; the top-level pending_commit context now points to the one "
-            "whose hash matches the saved reveal state instead of a different commit that happened to drive the "
-            "global next_action summary."
+
+    def test_troubleshoot_unrevealed_commit_help_prefers_saved_reveal_for_too_many_unrevealed_when_hash_matches_ready(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 15, "0:100", "overflow-ready", version_key=8)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="TooManyUnrevealedCommits",
+            status={
+                "block": 140,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "status": "READY TO REVEAL (1 blocks remaining)",
+                        "commit_block": 120,
+                        "first_reveal": 135,
+                        "last_reveal": 145,
+                        "blocks_until_action": 1,
+                        "hash": saved["hash"],
+                    },
+                    {
+                        "status": "WAITING (6 blocks until reveal window)",
+                        "commit_block": 132,
+                        "first_reveal": 146,
+                        "last_reveal": 156,
+                        "blocks_until_action": 6,
+                        "hash": "0xolder-overflow",
+                    },
+                ],
+            },
         )
-        assert helpers["blocks_until_action"] == 9
-        assert helpers["reveal_window"] == {"first_block": 134, "last_block": 144}
-        assert helpers["on_chain_match_note"] == (
-            "The saved commit hash matches the current pending commit on-chain. No recommit is needed yet; wait "
-            "for the reveal window, then reuse the saved reveal_command."
+        assert helpers["likely_cause"] == "There are too many pending commits waiting to be revealed for this hotkey."
+        assert helpers["saved_hash_matches_pending_commit"] is True
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == saved["reveal_command"]
+        assert helpers["next_step"] == (
+            "The saved hash still matches one of the pending commits on-chain. Reveal it now with the saved "
+            "reveal_command before creating any fresh commit."
+        )
+        assert "stale_state_detected" not in helpers
+
+    def test_troubleshoot_unrevealed_commit_help_waits_for_saved_commit_for_too_many_unrevealed(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 16, "0:100", "overflow-wait", version_key=9)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="Custom error: 76",
+            status={
+                "block": 150,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 2,
+                "commits": [
+                    {
+                        "status": "READY TO REVEAL (3 blocks remaining)",
+                        "commit_block": 128,
+                        "first_reveal": 140,
+                        "last_reveal": 150,
+                        "blocks_until_action": 3,
+                        "hash": "0xother-ready",
+                    },
+                    {
+                        "status": "WAITING (8 blocks until reveal window)",
+                        "commit_block": 142,
+                        "first_reveal": 158,
+                        "last_reveal": 168,
+                        "blocks_until_action": 8,
+                        "hash": saved["hash"],
+                    },
+                ],
+            },
+        )
+        assert helpers["saved_hash_matches_pending_commit"] is True
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["recommended_command"] == saved["inspect_status_command"]
+        assert helpers["ready_command"] == saved["reveal_command"]
+        assert helpers["next_step"] == (
+            "The saved hash still matches one of the pending commits on-chain. Wait for its reveal window, then use "
+            "the saved reveal_command instead of creating a fresh commit."
+        )
+        assert "stale_state_detected" not in helpers
+
+    def test_troubleshoot_unrevealed_commit_help_inspects_queue_for_too_many_unrevealed_when_saved_hash_differs(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        weights.save_commit_reveal_state_help(path, 17, "0:100", "overflow-drift", version_key=4)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="TooManyUnrevealedCommits",
+            status={
+                "block": 160,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "status": "READY TO REVEAL (2 blocks remaining)",
+                        "commit_block": 140,
+                        "first_reveal": 155,
+                        "last_reveal": 165,
+                        "blocks_until_action": 2,
+                        "hash": "0xother-ready",
+                    }
+                ],
+            },
+        )
+        assert helpers["saved_hash_matches_pending_commit"] is False
+        assert helpers["recommended_action"] == "INSPECT"
+        assert helpers["recommended_command"] == "agcli subnet commits --netuid 17"
+        assert helpers["on_chain_drift_note"] == (
+            "Different pending commits are currently occupying the unrevealed queue. Inspect them before reusing or "
+            "replacing the saved reveal state."
         )
         assert helpers["next_step"] == (
-            "The saved hash already matches the live pending commit. Wait for the reveal window, then retry the saved "
-            "reveal_command instead of creating a fresh commit."
+            "Inspect pending_commit.hash and matching_pending_commits before retrying. Reveal or let older commits "
+            "expire first, then create a fresh commit only if the saved hash is no longer active."
         )
+
+    def test_troubleshoot_unrevealed_commit_help_refreshes_before_recommit_for_too_many_unrevealed_when_queue_clears(
+        self, weights: Weights, tmp_path: Path
+    ) -> None:
+        path = tmp_path / "weights-state.json"
+        saved = weights.save_commit_reveal_state_help(path, 18, "0:100", "overflow-cleared", version_key=5)
+        helpers = weights.troubleshoot_unrevealed_commit_help(
+            path,
+            error="Custom error: 76",
+            status={
+                "block": 170,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [],
+            },
+        )
+        assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["recommended_command"] == saved["commit_command"]
+        assert helpers["on_chain_drift_note"] == (
+            "No pending commits are visible now, so the overflow likely cleared on-chain after the error was reported."
+        )
+        assert helpers["next_step"] == (
+            "Refresh weights status once more, then create a fresh commit only if no earlier commit remains to reveal."
+        )
+        assert "stale_state_detected" not in helpers
+        assert "matching_pending_commit_note" not in helpers
+        assert "blocks_until_action" not in helpers
+        assert "reveal_window" not in helpers
+        assert "on_chain_match_note" not in helpers
+        assert helpers["on_chain_state_note"] == "No pending commit is currently visible on-chain for this saved state."
+        assert "matching_pending_commit_count" not in helpers
+        assert "matching_pending_commits" not in helpers
+        assert helpers["status_summary"]["pending_commits"] == 0
+        assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert helpers["status_summary"]["commit_windows"] == []
+        assert "raw" not in helpers["status_summary"]
+        assert "raw_status" not in helpers
+        assert "pending_commit" not in helpers
+        assert "saved_hash_matches_pending_commit" not in helpers
+        assert helpers["reason"] == (
+            "No matching pending commit is visible on-chain for this saved state, so a fresh commit is required."
+        )
+        assert "recommended_reason" not in helpers
+        assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["status_summary"] == {
+            "current_block": 170,
+            "commit_reveal_enabled": True,
+            "reveal_period_epochs": 3,
+            "pending_commits": 0,
+            "pending_statuses": [],
+            "next_action": "NO_PENDING_COMMITS",
+            "commit_windows": [],
+        }
+        assert "commit_reveal_enabled" not in helpers
+        assert "reveal_period_epochs" not in helpers
+        assert "current_block" not in helpers
+        assert "pending_commits" not in helpers
+        assert "commit_windows" not in helpers
+        assert "next_action" not in helpers
+        assert "pending_statuses" not in helpers
+        assert helpers["recovery_reason"] == (
+            "A previous commit can still be revealed if its original weights and salt are preserved."
+        )
+        assert helpers["error"] == "Custom error: 76"
+        assert helpers["likely_cause"] == "There are too many pending commits waiting to be revealed for this hotkey."
+        assert helpers["state_path"] == str(path)
+        assert helpers["source"] == "manual_commit"
+        assert helpers["normalized_salt"] == "overflow-cleared"
+        assert helpers["normalized_weights"] == "0:100"
+        assert helpers["version_key"] == 5
+        assert helpers["wait"] is False
+        assert helpers["inspect_pending_commits_command"] == "agcli subnet commits --netuid 18"
+        assert helpers["inspect_status_command"] == "agcli weights status --netuid 18"
+        assert helpers["inspect_version_key_command"] == "agcli subnet hyperparams --netuid 18"
+        assert helpers["commit_state_recovery_note"].startswith(
+            "Run inspect_pending_commits_command to inspect the current pending commits on-chain"
+        )
+        assert helpers["preflight_note"].startswith("Inspect weights status and subnet hyperparams")
+        assert helpers["pending_commits_note"].startswith("If wallet-specific status and this saved state drift apart")
+        assert helpers["commit_command"] == saved["commit_command"]
+        assert helpers["reveal_command"] == saved["reveal_command"]
 
     def test_troubleshoot_unrevealed_commit_help_tracks_duplicate_matching_hashes(
         self, weights: Weights, tmp_path: Path
@@ -1070,7 +2331,15 @@ class TestWeights:
             error="ExpiredWeightCommit",
             status=EXPIRED_STATUS_TEXT,
         )
+        assert helpers["inspect_status_command"] == "agcli weights status --netuid 9"
+        assert helpers["inspect_pending_commits_command"] == "agcli subnet commits --netuid 9"
+        assert helpers["commit_state_recovery_note"] == (
+            "Run inspect_pending_commits_command to inspect the current pending commits on-chain, then compare "
+            "that output with the saved state record and inspect_status_command before retrying the saved "
+            "reveal_command."
+        )
         assert helpers["stale_state_detected"] is True
+        assert helpers["likely_cause"] == "The previous commit expired before it was revealed."
         assert helpers["on_chain_drift_note"] == (
             "The saved commit is no longer revealable on-chain. Create a fresh commit and save its new reveal state "
             "before waiting for the next reveal window."
@@ -1153,8 +2422,21 @@ class TestWeights:
             "agcli weights reveal --netuid 3 --weights 0:100 --salt abc --version-key 7"
         )
 
-    def test_saved_state_next_step_returns_none_for_unmatched_errors(self, weights: Weights) -> None:
-        assert weights._saved_state_next_step("RevealTooEarly") is None
+    def test_saved_state_next_step_handles_reveal_window_errors(self, weights: Weights) -> None:
+        assert weights._saved_state_next_step("RevealTooEarly") == (
+            "Keep the saved state record, then retry the exact saved reveal_command when the reveal window opens."
+        )
+        assert weights._saved_state_next_step("NotInRevealPeriod") == (
+            "Keep the saved state record, then retry the exact saved reveal_command when the reveal window opens."
+        )
+
+    def test_saved_state_next_step_handles_expired_saved_state_errors(self, weights: Weights) -> None:
+        assert weights._saved_state_next_step("RevealTooLate") == (
+            "Create a fresh commit, save its new reveal state, and retry reveal during the next valid reveal window."
+        )
+        assert weights._saved_state_next_step("ExpiredWeightCommit") == (
+            "Create a fresh commit, save its new reveal state, and retry reveal during the next valid reveal window."
+        )
 
     def test_is_version_key_mismatch_error_matches_expected_errors(self, weights: Weights) -> None:
         assert weights._is_version_key_mismatch_error("IncorrectCommitRevealVersion") is True
@@ -1193,6 +2475,7 @@ class TestWeights:
             "If atomic commit-reveal stalls after commit, keep this state record so the same commit can be "
             "revealed manually later."
         )
+        assert note["local_validation_tip"] == weights._local_validation_tip()
         assert note["reveal_command"] == ("agcli weights reveal --netuid 97 --weights 0:100 --salt abc --version-key 6")
 
     def test_inspect_pending_commits_help_returns_commits_command(self, weights: Weights) -> None:
@@ -1460,6 +2743,13 @@ class TestWeights:
             "reveal_mechanism": (
                 "agcli weights reveal-mechanism --netuid 1 --mechanism-id 4 --weights 0:100 --salt abc --version-key 7"
             ),
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
         }
 
     def test_timelocked_commit_runbook_help_returns_round_hash_and_reveal(self, weights: Weights) -> None:
@@ -1478,13 +2768,26 @@ class TestWeights:
             "status": "agcli weights status --netuid 1",
             "commit_timelocked": ("agcli weights commit-timelocked --netuid 1 --weights 0:100 --round 42 --salt abc"),
             "reveal": "agcli weights reveal --netuid 1 --weights 0:100 --salt abc --version-key 7",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
         }
 
     def test_reveal_salt_help_returns_normalized_salt_and_u16_vector(self, weights: Weights) -> None:
         assert weights.reveal_salt_help("abc") == {"normalized_salt": "abc", "salt_u16": [25185, 99]}
 
     def test_drand_status_help_returns_status_and_normalized_round(self, weights: Weights) -> None:
-        assert weights.drand_status_help(1, 42) == {"status": "agcli weights status --netuid 1", "round": 42}
+        assert weights.drand_status_help(1, 42) == {
+            "status": "agcli weights status --netuid 1",
+            "round": 42,
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": weights._local_validation_tip(),
+        }
 
     def test_mechanism_commit_hash_help_rejects_non_integer_weight_values(self, weights: Weights) -> None:
         with pytest.raises(ValueError, match="weights hash generation requires integer weight values"):
@@ -1519,6 +2822,9 @@ class TestWeights:
             "status": "agcli weights status --netuid 3",
             "set": "agcli weights set --netuid 3 --weights 0:100",
             "round": 7,
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": weights._local_validation_tip(),
         }
 
     def test_timelocked_workflow_help_with_salt_returns_reveal_hash_and_round(self, weights: Weights) -> None:
@@ -1531,6 +2837,15 @@ class TestWeights:
         assert helpers["commit_timelocked"] == (
             "agcli weights commit-timelocked --netuid 3 --weights 0:100 --round 7 --salt abc"
         )
+        assert helpers["inspect_localnet_scaffold_command"] == "agcli localnet scaffold"
+        assert helpers["inspect_doctor_command"] == "agcli doctor"
+        assert helpers["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+        assert helpers["local_validation_tip"].count("inspect_localnet_scaffold_command") == 1
+        assert helpers["local_validation_tip"].count("inspect_doctor_command") == 1
 
     def test_timelocked_reveal_payload_help_rejects_invalid_round(self, weights: Weights) -> None:
         with pytest.raises(ValueError, match="round must be greater than or equal to 0"):
@@ -1659,6 +2974,7 @@ class TestWeights:
             "commit_reveal": "agcli weights commit-reveal --netuid 1 --weights 0:100,1:200 --version-key 2 --wait",
             "commit": "agcli weights commit --netuid 1 --weights 0:100,1:200 --salt abc",
             "reveal": "agcli weights reveal --netuid 1 --weights 0:100,1:200 --salt abc --version-key 2",
+            "local_validation_tip": weights._local_validation_tip(),
             "inspect_metagraph_command": "agcli subnet metagraph --netuid 1",
             "inspect_chain_data_command": "agcli subnet show --netuid 1",
             "inspect_subnets_command": "agcli subnet list",
@@ -1669,6 +2985,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 1",
             "inspect_stake_command": "agcli stake list --netuid 1",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -1677,6 +2995,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 1 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 1",
@@ -1684,6 +3003,8 @@ class TestWeights:
             "inspect_set_param_command": "agcli subnet set-param --netuid 1",
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 1",
@@ -1705,11 +3026,14 @@ class TestWeights:
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -1718,10 +3042,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
             "status_note": (
                 "weights status resolves the current hotkey from agcli's global wallet selectors "
@@ -1767,6 +3093,7 @@ class TestWeights:
             ),
             "status": "agcli --wallet cold --hotkey-name validator weights status --netuid 5",
             "show": "agcli weights show --netuid 5",
+            "local_validation_tip": weights._local_validation_tip(),
             "show_command": "agcli weights show --netuid 5",
             "pending_commits": "agcli subnet commits --netuid 5",
             "hyperparams": "agcli subnet hyperparams --netuid 5",
@@ -1792,6 +3119,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 5",
             "inspect_stake_command": "agcli stake list --netuid 5",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -1800,6 +3129,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 5 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 5",
@@ -1807,6 +3137,8 @@ class TestWeights:
             "inspect_set_param_command": "agcli subnet set-param --netuid 5",
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 5",
@@ -1828,11 +3160,14 @@ class TestWeights:
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -1841,10 +3176,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
             "status_note": (
                 "weights status resolves the current hotkey from agcli's global wallet selectors "
@@ -1882,6 +3219,7 @@ class TestWeights:
             ),
             "status": "agcli --wallet cold --hotkey-name validator weights status --netuid 9",
             "show": "agcli weights show --netuid 9",
+            "local_validation_tip": weights._local_validation_tip(),
             "show_command": "agcli weights show --netuid 9",
             "pending_commits": "agcli subnet commits --netuid 9",
             "hyperparams": "agcli subnet hyperparams --netuid 9",
@@ -1895,6 +3233,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 9",
             "inspect_stake_command": "agcli stake list --netuid 9",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -1903,6 +3243,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 9 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 9",
@@ -1910,6 +3251,8 @@ class TestWeights:
             "inspect_set_param_command": "agcli subnet set-param --netuid 9",
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 9",
@@ -1931,11 +3274,14 @@ class TestWeights:
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -1944,10 +3290,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
             "status_note": (
                 "weights status resolves the current hotkey from agcli's global wallet selectors "
@@ -1966,6 +3314,11 @@ class TestWeights:
                 "Inspect subnet hyperparams before retrying failed set/reveal flows so "
                 "version_key, commit-reveal, and rate-limit assumptions match the subnet."
             ),
+            "set_weights_note": (
+                "Use direct weights set only when the subnet allows it; otherwise follow "
+                "commit-reveal or the saved-state recovery helpers instead of reformatting "
+                "commands manually."
+            ),
         }
 
     def test_show_help_accepts_optional_filters(self, weights: Weights) -> None:
@@ -1980,17 +3333,21 @@ class TestWeights:
             "commit": "agcli weights commit --netuid 1 --weights 0:100,1:200 --salt abc",
             "reveal": "agcli weights reveal --netuid 1 --weights 0:100,1:200 --salt abc --version-key 2",
             "status": "agcli weights status --netuid 1",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": weights._local_validation_tip(),
         }
 
     def test_commit_reveal_flow_help_is_subset_of_workflow_help(self, weights: Weights) -> None:
         workflow = weights.workflow_help(1, "0:100", "abc", version_key=2)
         flow = weights.commit_reveal_flow_help(1, "0:100", "abc", version_key=2)
-        assert flow == {
-            "normalized_weights": workflow["normalized_weights"],
-            "commit": workflow["commit"],
-            "reveal": workflow["reveal"],
-            "status": workflow["status"],
-        }
+        assert flow["normalized_weights"] == workflow["normalized_weights"]
+        assert flow["commit"] == workflow["commit"]
+        assert flow["reveal"] == workflow["reveal"]
+        assert flow["status"] == workflow["status"]
+        assert flow["inspect_localnet_scaffold_command"] == weights.inspect_localnet_scaffold_help()
+        assert flow["inspect_doctor_command"] == weights.inspect_doctor_help()
+        assert flow["local_validation_tip"] == weights._local_validation_tip()
 
     def test_workflow_help_rejects_invalid_salt(self, weights: Weights) -> None:
         with pytest.raises(ValueError, match="salt cannot be empty"):
@@ -2570,12 +3927,107 @@ class TestWeights:
                 "next_action": "NO_PENDING_COMMITS",
                 "commit_windows": [],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "NO_PENDING_COMMITS",
             "recommended_command": ("agcli weights commit-mechanism --netuid 3 --mechanism-id 4 --hash " + "11" * 32),
             "reason": "No mechanism commit is pending and this subnet uses commit-reveal.",
             "normalized_weights": "0:100",
             "normalized_hash": "11" * 32,
+            "next_step": "Run recommended_command to start a fresh mechanism commit.",
         }
+
+    def test_next_mechanism_action_help_attaches_raw_status_for_text_input(self, weights: Weights) -> None:
+        helpers = weights.next_mechanism_action_help(5, 4, NO_PENDING_STATUS_TEXT, "0:100", hash_value="11" * 32)
+
+        assert helpers["raw_status"] == NO_PENDING_STATUS_TEXT.strip()
+        assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+
+    def test_next_timelocked_action_help_attaches_raw_status_for_text_input(self, weights: Weights) -> None:
+        helpers = weights.next_timelocked_action_help(9, EXPIRED_STATUS_TEXT, "0:100", round=42, salt="abc")
+
+        assert helpers["raw_status"] == EXPIRED_STATUS_TEXT.strip()
+        assert helpers["status_summary"]["next_action"] == "RECOMMIT"
+
+    def test_next_action_help_attaches_raw_status_for_text_input(self, weights: Weights) -> None:
+        helpers = weights.next_action_help(5, READY_STATUS_TEXT, "0:100", salt="abc", version_key=7)
+
+        assert helpers["raw_status"] == READY_STATUS_TEXT.strip()
+        assert helpers["status_summary"]["next_action"] == "REVEAL"
+
+    def test_status_summary_help_attaches_raw_status_for_text_runbook_parity(self, weights: Weights) -> None:
+        summary = weights.status_summary_help(READY_STATUS_TEXT)
+
+        assert "raw_status" not in summary
+        assert summary["next_action"] == "REVEAL"
+        assert summary["pending_commits"] == 1
+
+    def test_next_mechanism_action_help_omits_raw_status_for_json_input(self, weights: Weights) -> None:
+        helpers = weights.next_mechanism_action_help(
+            5,
+            4,
+            {
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "commit_block": 100,
+                        "first_reveal": 120,
+                        "last_reveal": 130,
+                        "status": "READY TO REVEAL (5 blocks remaining)",
+                    }
+                ],
+            },
+            "0:100",
+            salt="abc",
+        )
+
+        assert "raw_status" not in helpers
+
+    def test_next_timelocked_action_help_omits_raw_status_for_json_input(self, weights: Weights) -> None:
+        helpers = weights.next_timelocked_action_help(
+            9,
+            {
+                "block": 140,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 4,
+                "commits": [
+                    {
+                        "commit_block": 100,
+                        "first_reveal": 110,
+                        "last_reveal": 130,
+                        "status": "EXPIRED",
+                    }
+                ],
+            },
+            "0:100",
+            round=42,
+            salt="abc",
+        )
+
+        assert "raw_status" not in helpers
+
+    def test_next_action_help_omits_raw_status_for_json_input(self, weights: Weights) -> None:
+        helpers = weights.next_action_help(
+            1,
+            {
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "commit_block": 100,
+                        "first_reveal": 120,
+                        "last_reveal": 130,
+                        "status": "READY TO REVEAL (5 blocks remaining)",
+                    }
+                ],
+            },
+            "0:100",
+            salt="abc",
+        )
+
+        assert "raw_status" not in helpers
 
     def test_troubleshoot_timelocked_help_includes_live_recommit_guidance(self, weights: Weights) -> None:
         helpers = weights.troubleshoot_timelocked_help(
@@ -2604,6 +4056,74 @@ class TestWeights:
             "agcli weights commit-timelocked --netuid 7 --weights 0:100 --round 42 --salt abc"
         )
 
+    def test_troubleshoot_mechanism_help_attaches_raw_status_for_text_input(self, weights: Weights) -> None:
+        helpers = weights.troubleshoot_mechanism_help(
+            5,
+            4,
+            "RevealTooEarly",
+            "0:100",
+            salt="abc",
+            version_key=7,
+            status=READY_STATUS_TEXT,
+        )
+        assert helpers["raw_status"] == READY_STATUS_TEXT.strip()
+        assert helpers["status_summary"]["next_action"] == "REVEAL"
+        assert helpers["recommended_action"] == "REVEAL"
+
+    def test_troubleshoot_timelocked_help_attaches_raw_status_for_text_input(self, weights: Weights) -> None:
+        helpers = weights.troubleshoot_timelocked_help(
+            9,
+            "ExpiredWeightCommit",
+            "0:100",
+            round=42,
+            salt="abc",
+            status=EXPIRED_STATUS_TEXT,
+        )
+        assert helpers["raw_status"] == EXPIRED_STATUS_TEXT.strip()
+        assert helpers["status_summary"]["next_action"] == "RECOMMIT"
+        assert helpers["recommended_action"] == "RECOMMIT"
+
+    def test_troubleshoot_mechanism_help_omits_raw_status_for_json_input(self, weights: Weights) -> None:
+        helpers = weights.troubleshoot_mechanism_help(
+            5,
+            4,
+            "RevealTooEarly",
+            status={
+                "block": 125,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 3,
+                "commits": [
+                    {
+                        "commit_block": 100,
+                        "first_reveal": 120,
+                        "last_reveal": 130,
+                        "status": "READY TO REVEAL (5 blocks remaining)",
+                    }
+                ],
+            },
+        )
+        assert "raw_status" not in helpers
+
+    def test_troubleshoot_timelocked_help_omits_raw_status_for_json_input(self, weights: Weights) -> None:
+        helpers = weights.troubleshoot_timelocked_help(
+            9,
+            "ExpiredWeightCommit",
+            status={
+                "block": 140,
+                "commit_reveal_enabled": True,
+                "reveal_period_epochs": 4,
+                "commits": [
+                    {
+                        "commit_block": 100,
+                        "first_reveal": 110,
+                        "last_reveal": 130,
+                        "status": "EXPIRED",
+                    }
+                ],
+            },
+        )
+        assert "raw_status" not in helpers
+
     def test_next_timelocked_action_help_recommends_set_when_commit_reveal_disabled(self, weights: Weights) -> None:
         helpers = weights.next_timelocked_action_help(
             4,
@@ -2628,11 +4148,13 @@ class TestWeights:
                 "next_action": "NO_PENDING_COMMITS",
                 "commit_windows": [],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "NO_PENDING_COMMITS",
             "recommended_command": "agcli weights set --netuid 4 --weights 0:100 --version-key 2",
             "reason": "No timelocked commit is pending and direct weight setting is available.",
             "normalized_weights": "0:100",
             "round": 42,
+            "next_step": "Run recommended_command to set weights directly.",
         }
 
     def test_troubleshoot_help_returns_guidance_for_validator_permit_errors(self, weights: Weights) -> None:
@@ -2648,6 +4170,7 @@ class TestWeights:
             "likely_cause": "The hotkey is not currently allowed to set weights on this subnet.",
             "next_step": "Check validator permit, stake, and subnet validator settings before retrying.",
             "status": "agcli weights status --netuid 1",
+            "local_validation_tip": weights._local_validation_tip(),
             "normalized_weights": "0:100,1:200",
             "set": "agcli weights set --netuid 1 --weights 0:100,1:200 --version-key 9",
             "commit": "agcli weights commit --netuid 1 --weights 0:100,1:200 --salt tempo-12",
@@ -2669,6 +4192,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 1",
             "inspect_stake_command": "agcli stake list --netuid 1",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -2677,6 +4202,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 1 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 1",
@@ -2684,6 +4210,8 @@ class TestWeights:
             "inspect_set_param_command": "agcli subnet set-param --netuid 1",
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 1",
@@ -2705,11 +4233,14 @@ class TestWeights:
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -2718,10 +4249,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
             "adjacent_recovery_note": (
                 "If the weights-specific retry path still looks wrong, pivot to show_command for live on-chain "
@@ -2729,14 +4262,16 @@ class TestWeights:
                 "inspect_metagraph_command, inspect_chain_data_command, inspect_emissions_command, and "
                 "inspect_monitor_command for live subnet UIDs/state drift, inspect_neuron_command for per-UID member "
                 "detail after metagraph/monitor checks, inspect_config_show_command, "
+                "inspect_config_set_wallet_command, inspect_config_set_hotkey_command, "
                 "inspect_wallet_show_command, inspect_wallet_current_command, inspect_wallet_associate_command, "
                 "inspect_wallet_derive_command, inspect_wallet_sign_command, inspect_wallet_verify_command, "
-                "inspect_balance_command, "
+                "inspect_hotkey_address_command, inspect_balance_command, "
                 "inspect_validators_command, inspect_stake_command, inspect_stake_add_command, "
-                "and inspect_validator_requirements_command for wallet selector inspection, wallet inventory plus "
-                "selected coldkey/hotkey identity confirmation, hotkey association recovery, manual address "
-                "derivation checks, signature generation, signature verification, coldkey funding, validator "
-                "readiness, "
+                "and inspect_validator_requirements_command for wallet selector inspection, persisted selector "
+                "correction, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey association "
+                "recovery, manual address "
+                "derivation checks, explicit hotkey-address confirmation, signature generation, signature "
+                "verification, coldkey funding, validator readiness, "
                 "stake top-ups, or validator threshold checks, "
                 "inspect_hyperparams_command plus "
                 "inspect_owner_param_list_command, inspect_set_param_command, inspect_admin_list_command, "
@@ -2750,9 +4285,12 @@ class TestWeights:
                 "inspect_miner_endpoints_command, and inspect_validator_endpoints_command for serve retries, "
                 "TLS serve recovery, prometheus recovery, endpoint recovery, or serve/endpoint verification, "
                 "inspect_watch_command plus inspect_monitor_command for live UID/state drift, "
-                "explain_weights_command plus "
-                "explain_commit_reveal_command for copy-pasteable concept refreshers, inspect_subnets_command for "
-                "available netuid discovery, and inspect_subnet_command for the current subnet summary."
+                "inspect_localnet_scaffold_command plus inspect_doctor_command for Docker/local runtime readiness "
+                "before local weight validation, explain_weights_command plus explain_commit_reveal_command for "
+                "copy-pasteable concept refreshers, inspect_subnets_command for available netuid discovery, and "
+                "inspect_subnet_command for the current subnet summary. Use inspect_localnet_scaffold_command to "
+                "bootstrap a local chain and inspect_doctor_command to confirm the host is ready before retrying "
+                "local commit-reveal validation."
             ),
         }
 
@@ -2772,22 +4310,59 @@ class TestWeights:
         assert helpers["inspect_wallet_verify_command"] == (
             "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
         )
+        assert helpers["inspect_hotkey_address_command"] == "agcli view axon --netuid <netuid> --hotkey-address <ss58>"
         assert helpers["inspect_balance_command"] == "agcli balance"
         assert helpers["inspect_stake_add_command"] == "agcli stake add --netuid 2 --amount <amount>"
         assert helpers["inspect_validator_requirements_command"] == "agcli subnet hyperparams --netuid 2"
         assert helpers["stake_recovery_note"] == (
             "Run inspect_stake_command to confirm the hotkey stake on this subnet, then compare it with "
             "inspect_validator_requirements_command before retrying. Use inspect_config_show_command when the wrong "
-            "wallet or hotkey may be selected, inspect_wallet_show_command to inspect wallet inventory, "
-            "inspect_wallet_current_command to confirm the selected coldkey/hotkey identity, "
-            "inspect_wallet_associate_command when the hotkey may need to be re-associated to the coldkey, "
-            "inspect_wallet_derive_command for manual address confirmation from a pubkey or mnemonic, "
-            "inspect_wallet_sign_command when you need to generate a fresh confirmation signature, "
-            "inspect_wallet_verify_command when you need explicit signer/signature confirmation, and "
-            "inspect_balance_command when the coldkey may need more TAO before staking."
+            "wallet or hotkey may be selected, inspect_config_set_wallet_command and "
+            "inspect_config_set_hotkey_command when the persisted defaults need correction, "
+            "inspect_wallet_show_command to inspect wallet inventory, inspect_wallet_current_command to confirm "
+            "the selected coldkey/hotkey identity, inspect_wallet_associate_command when the hotkey may need to "
+            "be re-associated to the coldkey, inspect_wallet_derive_command for manual address confirmation from "
+            "a pubkey or mnemonic, inspect_hotkey_address_command when you need explicit hotkey-address "
+            "confirmation against subnet endpoint data, inspect_wallet_sign_command when you need to generate a "
+            "fresh confirmation signature, inspect_wallet_verify_command when you need explicit "
+            "signer/signature confirmation, and inspect_balance_command when the coldkey may need more TAO "
+            "before staking."
         )
         assert "inspect_pending_commits_command" not in helpers
         assert "inspect_version_key_command" not in helpers
+
+    @pytest.mark.parametrize(
+        "error",
+        ["CommittingWeightsTooFast", "SettingWeightsTooFast", "TxRateLimitExceeded", "NetworkTxRateLimitExceeded"],
+    )
+    def test_troubleshoot_help_adds_rate_limit_recovery_guidance(self, weights: Weights, error: str) -> None:
+        helpers = weights.troubleshoot_help(6, error, "0:100", version_key=5)
+        assert helpers["likely_cause"] == "A subnet or network rate limit is blocking this weights update."
+        assert helpers["next_step"] == (
+            "Check weights status to see whether a commit is already pending, then wait for the rate-limit "
+            "window to pass before retrying the same normalized command."
+        )
+        assert helpers["inspect_status_command"] == "agcli weights status --netuid 6"
+        assert helpers["inspect_subnet_rules_command"] == "agcli subnet hyperparams --netuid 6"
+        assert helpers["rate_limit_recovery_note"] == (
+            "Run inspect_status_command to confirm whether a commit is already pending, then use "
+            "inspect_subnet_rules_command to inspect this subnet's weight update limits before retrying after "
+            "the rate-limit window passes."
+        )
+        assert "inspect_pending_commits_command" not in helpers
+        assert "inspect_version_key_command" not in helpers
+
+    @pytest.mark.parametrize("error", ["SubnetworkDoesNotExist", "SubnetNotExists", "Subnet 0 not found"])
+    def test_troubleshoot_help_adds_subnet_missing_recovery_guidance(self, weights: Weights, error: str) -> None:
+        helpers = weights.troubleshoot_help(8, error, "0:100", version_key=5)
+        assert helpers["likely_cause"] == "The target subnet does not exist or is not currently active."
+        assert helpers["next_step"] == "Verify the netuid first, then retry against an existing subnet."
+        assert helpers["inspect_subnets_command"] == "agcli subnet list"
+        assert helpers["subnet_missing_recovery_note"] == (
+            "Run inspect_subnets_command to confirm the target netuid exists and is active before retrying."
+        )
+        assert "inspect_status_command" not in helpers
+        assert "inspect_subnet_rules_command" not in helpers
 
     @pytest.mark.parametrize("error", ["InvalidUid", "UidVecContainInvalidOne", "DuplicateUids"])
     def test_troubleshoot_help_adds_metagraph_recovery_guidance_for_uid_payload_errors(
@@ -2817,6 +4392,7 @@ class TestWeights:
         assert weights.inspect_wallet_verify_help() == (
             "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
         )
+        assert weights.inspect_hotkey_address_help() == "agcli view axon --netuid <netuid> --hotkey-address <ss58>"
         assert weights.inspect_balance_help() == "agcli balance"
         assert weights.inspect_stake_add_help(97) == "agcli stake add --netuid 97 --amount <amount>"
         assert weights.inspect_validator_requirements_help(97) == "agcli subnet hyperparams --netuid 97"
@@ -2859,6 +4435,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 97",
             "inspect_stake_command": "agcli stake list --netuid 97",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -2867,6 +4445,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 97 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 97",
@@ -2874,6 +4453,8 @@ class TestWeights:
             "inspect_set_param_command": "agcli subnet set-param --netuid 97",
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 97",
@@ -2895,11 +4476,14 @@ class TestWeights:
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -2908,10 +4492,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
         }
         assert weights._metagraph_weights_examples() == {
@@ -2933,6 +4519,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 9",
             "inspect_stake_command": "agcli stake list --netuid 9",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -2941,6 +4529,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 9 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 9",
@@ -2948,6 +4537,8 @@ class TestWeights:
             "inspect_set_param_command": "agcli subnet set-param --netuid 9",
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 9",
@@ -2969,11 +4560,14 @@ class TestWeights:
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -2982,10 +4576,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
             "adjacent_recovery_note": (
                 "If the weights-specific retry path still looks wrong, pivot to show_command for live on-chain "
@@ -2993,14 +4589,16 @@ class TestWeights:
                 "inspect_metagraph_command, inspect_chain_data_command, inspect_emissions_command, and "
                 "inspect_monitor_command for live subnet UIDs/state drift, inspect_neuron_command for per-UID member "
                 "detail after metagraph/monitor checks, inspect_config_show_command, "
+                "inspect_config_set_wallet_command, inspect_config_set_hotkey_command, "
                 "inspect_wallet_show_command, inspect_wallet_current_command, inspect_wallet_associate_command, "
                 "inspect_wallet_derive_command, inspect_wallet_sign_command, inspect_wallet_verify_command, "
-                "inspect_balance_command, "
+                "inspect_hotkey_address_command, inspect_balance_command, "
                 "inspect_validators_command, inspect_stake_command, inspect_stake_add_command, "
-                "and inspect_validator_requirements_command for wallet selector inspection, wallet inventory plus "
-                "selected coldkey/hotkey identity confirmation, hotkey association recovery, manual address "
-                "derivation checks, signature generation, signature verification, coldkey funding, validator "
-                "readiness, "
+                "and inspect_validator_requirements_command for wallet selector inspection, persisted selector "
+                "correction, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey association "
+                "recovery, manual address "
+                "derivation checks, explicit hotkey-address confirmation, signature generation, signature "
+                "verification, coldkey funding, validator readiness, "
                 "stake top-ups, or validator threshold checks, "
                 "inspect_hyperparams_command plus "
                 "inspect_owner_param_list_command, inspect_set_param_command, inspect_admin_list_command, "
@@ -3014,257 +4612,63 @@ class TestWeights:
                 "inspect_miner_endpoints_command, and inspect_validator_endpoints_command for serve retries, "
                 "TLS serve recovery, prometheus recovery, endpoint recovery, or serve/endpoint verification, "
                 "inspect_watch_command plus inspect_monitor_command for live UID/state drift, "
-                "explain_weights_command plus "
-                "explain_commit_reveal_command for copy-pasteable concept refreshers, inspect_subnets_command for "
-                "available netuid discovery, and inspect_subnet_command for the current subnet summary."
+                "inspect_localnet_scaffold_command plus inspect_doctor_command for Docker/local runtime readiness "
+                "before local weight validation, explain_weights_command plus explain_commit_reveal_command for "
+                "copy-pasteable concept refreshers, inspect_subnets_command for available netuid discovery, and "
+                "inspect_subnet_command for the current subnet summary. Use inspect_localnet_scaffold_command to "
+                "bootstrap a local chain and inspect_doctor_command to confirm the host is ready before retrying "
+                "local commit-reveal validation."
             ),
         }
 
     def test_troubleshoot_help_adds_adjacent_recovery_fields_for_other_error_paths(self, weights: Weights) -> None:
         helpers = weights.troubleshoot_help(3, "NotEnoughStakeToSetWeights", "0:100")
-        assert helpers["inspect_metagraph_command"] == "agcli subnet metagraph --netuid 3"
-        assert helpers["inspect_chain_data_command"] == "agcli subnet show --netuid 3"
-        assert helpers["inspect_neuron_command"] == "agcli view neuron --netuid 3 --uid 0"
-        assert helpers["show_command"] == "agcli weights show --netuid 3"
-        assert helpers["inspect_hyperparams_command"] == "agcli subnet hyperparams --netuid 3"
-        assert helpers["inspect_registration_cost_command"] == "agcli subnet cost --netuid 3"
-        assert helpers["inspect_register_neuron_command"] == "agcli subnet register-neuron --netuid 3"
-        assert helpers["inspect_pow_register_command"] == "agcli subnet pow --netuid 3"
-        assert helpers["inspect_snipe_register_command"] == "agcli subnet snipe --netuid 3"
-        assert helpers["inspect_health_command"] == "agcli subnet health --netuid 3"
-        assert helpers["inspect_serve_axon_command"] == "agcli serve axon --netuid 3 --ip <ip> --port <port>"
-        assert (
-            helpers["inspect_serve_axon_tls_command"]
-            == "agcli serve axon-tls --netuid 3 --ip <ip> --port <port> --cert <cert>"
-        )
-        assert (
-            helpers["inspect_serve_prometheus_command"] == "agcli serve prometheus --netuid 3 --ip <ip> --port <port>"
-        )
-        assert helpers["inspect_probe_command"] == "agcli subnet probe --netuid 3"
-        assert helpers["inspect_axon_command"] == "agcli view axon --netuid 3"
-        assert helpers["inspect_miner_endpoints_command"] == "agcli view axon --netuid 3"
-        assert helpers["inspect_validator_endpoints_command"] == "agcli view axon --netuid 3"
-        assert helpers["inspect_watch_command"] == "agcli subnet watch --netuid 3"
-        assert helpers["inspect_monitor_command"] == "agcli subnet monitor --netuid 3 --json"
-        assert helpers["adjacent_recovery_note"].startswith("If the weights-specific retry path still looks wrong")
+
+        assert helpers["error"] == "NotEnoughStakeToSetWeights"
+        assert helpers["normalized_weights"] == "0:100"
+        assert helpers["set"] == "agcli weights set --netuid 3 --weights 0:100"
+        assert helpers["inspect_stake_command"] == "agcli stake list --netuid 3"
+        assert helpers["inspect_validator_requirements_command"] == "agcli subnet hyperparams --netuid 3"
+        assert helpers["stake_recovery_note"].startswith("Run inspect_stake_command")
+
+        assert helpers["inspect_localnet_scaffold_command"] == "agcli localnet scaffold"
+        assert helpers["inspect_doctor_command"] == "agcli doctor"
         assert helpers["adjacent_workflows_note"].startswith("If the weights-specific path still looks wrong")
-        assert helpers["adjacent_recovery_note"].count("inspect_") == 40
-        assert helpers["adjacent_recovery_note"].count("show_command") == 3
-        assert helpers["adjacent_workflows_note"].count("serve_prometheus") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_serve_axon_tls_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_serve_prometheus_command") == 1
-        assert helpers["adjacent_workflows_note"].count("TLS serve recovery") == 1
-        assert helpers["adjacent_recovery_note"].count("TLS serve recovery") == 1
-        assert helpers["adjacent_workflows_note"].count("prometheus recovery") == 1
-        assert helpers["adjacent_recovery_note"].count("prometheus recovery") == 1
-        assert helpers["adjacent_workflows_note"].count("inspect_") == 1
-        assert helpers["adjacent_workflows_note"].count("validator readiness") == 1
-        assert helpers["adjacent_recovery_note"].count("validator readiness") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_current_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_associate_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_verify_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_validators_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_stake_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_config_show_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_show_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_current_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_balance_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_validator_requirements_command") == 1
-        assert (
-            helpers["adjacent_recovery_note"].count(
-                "wallet inventory plus selected coldkey/hotkey identity confirmation"
-            )
-            == 1
-        )
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_associate_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_derive_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_sign_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_wallet_verify_command") == 1
-        assert helpers["adjacent_recovery_note"].count("hotkey association recovery") == 1
-        assert helpers["adjacent_recovery_note"].count("manual address derivation checks") == 1
-        assert helpers["adjacent_recovery_note"].count("signature generation") == 1
-        assert helpers["adjacent_recovery_note"].count("signature verification") == 1
-        assert helpers["adjacent_workflows_note"].count("hotkey association recovery") == 1
-        assert helpers["adjacent_workflows_note"].count("manual address derivation checks") == 1
-        assert helpers["adjacent_workflows_note"].count("signature generation") == 1
-        assert helpers["adjacent_workflows_note"].count("signature verification") == 1
-        assert helpers["adjacent_workflows_note"].count("wallet_associate") == 1
-        assert helpers["adjacent_workflows_note"].count("wallet_derive") == 1
-        assert helpers["adjacent_workflows_note"].count("wallet_sign") == 1
-        assert helpers["adjacent_workflows_note"].count("wallet_verify") == 1
-        assert helpers["adjacent_workflows_note"].count("config_show") == 1
-        assert helpers["adjacent_workflows_note"].count("wallet_show") == 1
-        assert helpers["adjacent_workflows_note"].count("wallet_current") == 1
-        assert helpers["adjacent_workflows_note"].count("wallet_associate") == 1
-        assert helpers["adjacent_workflows_note"].count("balance") == 1
-        assert helpers["adjacent_workflows_note"].count("selected coldkey/hotkey identity confirmation") == 1
-        assert helpers["adjacent_workflows_note"].count("hotkey association recovery") == 1
-        assert helpers["adjacent_recovery_note"].count("selected coldkey/hotkey identity confirmation") == 1
-        assert helpers["adjacent_recovery_note"].count("hotkey association recovery") == 1
-        assert helpers["adjacent_workflows_note"].count("validators") == 1
-        assert helpers["adjacent_workflows_note"].count("stake") == 3
-        assert helpers["adjacent_workflows_note"].count("validator_requirements") == 1
-        assert helpers["adjacent_workflows_note"].count("readiness") == 2
-        assert helpers["adjacent_recovery_note"].count("readiness") == 2
-        assert helpers["adjacent_workflows_note"].count("subnet summary") == 1
-        assert helpers["adjacent_recovery_note"].count("subnet summary") == 1
-        assert helpers["adjacent_workflows_note"].count("serve retries") == 1
-        assert helpers["adjacent_recovery_note"].count("serve retries") == 1
-        assert helpers["adjacent_workflows_note"].count("serve/endpoint verification") == 1
-        assert helpers["adjacent_recovery_note"].count("serve/endpoint verification") == 1
-        assert helpers["adjacent_workflows_note"].count("watch plus monitor") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_watch_command plus inspect_monitor_command") == 1
-        assert helpers["adjacent_workflows_note"].count("subnet entry") == 1
-        assert helpers["adjacent_recovery_note"].count("subnet entry") == 1
-        assert helpers["adjacent_workflows_note"].count("mutation discovery") == 1
-        assert helpers["adjacent_recovery_note"].count("mutation discovery") == 1
-        assert helpers["adjacent_workflows_note"].count("UIDs/state") == 1
-        assert helpers["adjacent_recovery_note"].count("UIDs/state") == 1
-        assert "retry" not in helpers["adjacent_workflows_note"]
-        assert "retry" in helpers["adjacent_recovery_note"]
-        assert "show_command for live on-chain weights" in helpers["adjacent_recovery_note"]
-        assert (
-            "inspect_metagraph_command, inspect_chain_data_command, inspect_emissions_command, and "
-            "inspect_monitor_command" in helpers["adjacent_recovery_note"]
-        )
-        assert (
-            "inspect_config_show_command, inspect_wallet_show_command, inspect_wallet_current_command, "
-            "inspect_wallet_associate_command, inspect_wallet_derive_command, inspect_wallet_sign_command, "
-            "inspect_wallet_verify_command, inspect_balance_command, inspect_validators_command, "
-            "inspect_stake_command, inspect_stake_add_command, and inspect_validator_requirements_command"
-            in helpers["adjacent_recovery_note"]
-        )
-        assert (
-            "hyperparams plus owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
-            "pow_register/snipe_register/health" in helpers["adjacent_workflows_note"]
-        )
-        assert (
-            "inspect_hyperparams_command plus inspect_owner_param_list_command, inspect_set_param_command, "
-            "inspect_admin_list_command, inspect_admin_raw_command" in helpers["adjacent_recovery_note"]
-        )
-        assert "root-only mutation escape hatches" in helpers["adjacent_workflows_note"]
-        assert "root-only mutation escape hatches" in helpers["adjacent_recovery_note"]
-        assert (
-            "inspect_registration_cost_command, inspect_register_neuron_command, inspect_pow_register_command, "
-            "inspect_snipe_register_command, and inspect_health_command" in helpers["adjacent_recovery_note"]
-        )
-        assert (
-            "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus axon"
-            in helpers["adjacent_workflows_note"]
-        )
-        assert (
-            "inspect_serve_axon_command plus inspect_serve_axon_tls_command plus inspect_serve_prometheus_command plus "
-            "inspect_serve_reset_command plus inspect_probe_command plus inspect_axon_command"
-            in helpers["adjacent_recovery_note"]
-        )
-        assert (
-            "serve retries, TLS serve recovery, prometheus recovery, endpoint recovery"
-            in helpers["adjacent_recovery_note"]
-        )
-        assert (
-            "serve retries, TLS serve recovery, prometheus recovery, endpoint recovery"
-            in helpers["adjacent_workflows_note"]
-        )
-        assert helpers["adjacent_workflows_note"].count("serve_axon") == 2
-        assert helpers["adjacent_recovery_note"].count("inspect_serve_axon_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_serve_axon_tls_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_serve_reset_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_probe_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_axon_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_miner_endpoints_command") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_validator_endpoints_command") == 1
-        assert helpers["adjacent_workflows_note"].count("endpoint recovery") == 1
-        assert helpers["adjacent_recovery_note"].count("endpoint recovery") == 1
-        assert helpers["adjacent_workflows_note"].count("metagraph") == 2
-        assert helpers["adjacent_workflows_note"].count("hyperparams") == 1
-        assert helpers["adjacent_workflows_note"].count("emissions") == 1
-        assert helpers["adjacent_workflows_note"].count("owner_param_list") == 1
-        assert helpers["adjacent_workflows_note"].count("set_param") == 1
-        assert helpers["adjacent_workflows_note"].count("admin_list") == 1
-        assert helpers["adjacent_workflows_note"].count("admin_raw") == 1
-        assert helpers["adjacent_workflows_note"].count("registration_cost") == 1
-        assert helpers["adjacent_workflows_note"].count("register_neuron") == 1
-        assert helpers["adjacent_workflows_note"].count("pow_register") == 1
-        assert helpers["adjacent_workflows_note"].count("snipe_register") == 1
-        assert helpers["adjacent_workflows_note"].count("axon") == 3
-        assert helpers["adjacent_workflows_note"].count("miner_endpoints") == 1
-        assert helpers["adjacent_workflows_note"].count("validator_endpoints") == 1
-        assert helpers["adjacent_workflows_note"].count("subnet") == 6
-        assert len(helpers) == 50
-        assert set(weights._troubleshoot_recovery_fields(3, "unexpected runtime error")) == set()
+        assert helpers["adjacent_recovery_note"].startswith("If the weights-specific retry path still looks wrong")
+        assert "localnet_scaffold plus doctor" in helpers["adjacent_workflows_note"]
+        assert "inspect_localnet_scaffold_command plus inspect_doctor_command" in helpers["adjacent_recovery_note"]
+        assert "Use localnet_scaffold to bootstrap a local chain" in helpers["adjacent_workflows_note"]
+        assert "Use inspect_localnet_scaffold_command to bootstrap a local chain" in helpers["adjacent_recovery_note"]
+        assert "doctor to confirm the host is ready" in helpers["adjacent_workflows_note"]
+        assert "inspect_doctor_command to confirm the host is ready" in helpers["adjacent_recovery_note"]
+        assert helpers["adjacent_workflows_note"].count("localnet_scaffold") == 2
+        assert helpers["adjacent_workflows_note"].count("doctor") == 2
+        assert helpers["adjacent_recovery_note"].count("inspect_localnet_scaffold_command") == 2
+        assert helpers["adjacent_recovery_note"].count("inspect_doctor_command") == 2
+
         assert "inspect_pending_commits_command" not in helpers
         assert "inspect_version_key_command" not in helpers
-        assert "set" not in weights._troubleshoot_recovery_fields(3, "unexpected runtime error")
-        assert "commit" not in weights._troubleshoot_recovery_fields(3, "unexpected runtime error")
-        assert "reveal" not in weights._troubleshoot_recovery_fields(3, "unexpected runtime error")
-        assert "commit_reveal" not in weights._troubleshoot_recovery_fields(3, "unexpected runtime error")
-        assert "status_summary" not in helpers
-        assert "recommended_action" not in helpers
-        assert "recommended_command" not in helpers
-        assert "reason" not in helpers
-        assert "raw_status" not in helpers
-        assert "wallet" not in helpers
-        assert "hotkey" not in helpers
-        assert "wallet_selection_note" not in helpers
-        assert "show" not in helpers
-        assert "hyperparams" not in helpers
-        assert "pending_commits" not in helpers
-        assert "status_note" not in helpers
-        assert "show_note" not in helpers
-        assert "pending_commits_note" not in helpers
-        assert "hyperparams_note" not in helpers
-        assert "set_weights_note" not in helpers
-        assert "netuid" not in helpers
-        assert "get" not in helpers
-        assert "param_list" not in helpers
-        assert "owner_param_list" not in helpers
-        assert "admin_list" not in helpers
-        assert "admin_raw" not in helpers
-        assert "mutation_note" not in helpers
-        assert "emissions" not in helpers
-        assert "miner_endpoints" not in helpers
-        assert "validator_endpoints" not in helpers
-        assert "subnet_metagraph_full" not in helpers
-        assert "validators" not in helpers
-        assert "probe" not in helpers
-        assert "neuron" not in helpers
-        assert "axon" not in helpers
         assert "commit_state_recovery_note" not in helpers
-        assert "version_key_recovery_note" not in helpers
-        assert "uid_payload_recovery_note" not in helpers
-        assert "payload_shape_recovery_note" not in helpers
-        assert "validator_permit_recovery_note" not in helpers
-        assert "subnet_missing_recovery_note" not in helpers
-        assert "rate_limit_recovery_note" not in helpers
-        assert "weights_not_settable_recovery_note" not in helpers
-        assert "commit_reveal_disabled_recovery_note" not in helpers
-        assert "commit_reveal_required_recovery_note" not in helpers
-        assert helpers["inspect_subnets_command"] == "agcli subnet list"
-        assert "inspect_subnet_rules_command" not in helpers
-        assert "inspect_status_command" not in helpers
-        assert "inspect_pending_commits_command" not in helpers
-        assert "inspect_version_key_command" not in helpers
 
         direct_fields = weights._troubleshoot_recovery_fields(3, "NotEnoughStakeToSetWeights")
         adjacent_fields = weights._adjacent_recovery_fields(3)
-        assert adjacent_fields["inspect_validators_command"] == "agcli view validators --netuid 3"
-        assert adjacent_fields["inspect_stake_command"] == "agcli stake list --netuid 3"
-        assert adjacent_fields["inspect_validator_requirements_command"] == "agcli subnet hyperparams --netuid 3"
+        assert direct_fields["stake_recovery_note"] == helpers["stake_recovery_note"]
         assert adjacent_fields["adjacent_workflows_note"] == helpers["adjacent_workflows_note"]
         assert adjacent_fields["adjacent_recovery_note"] == helpers["adjacent_recovery_note"]
-        assert len(adjacent_fields) == 43
-        assert set(helpers) == set(adjacent_fields) | {
+        assert set(helpers) == set(direct_fields) | set(adjacent_fields) | {
             "error",
             "likely_cause",
             "next_step",
             "status",
+            "local_validation_tip",
             "normalized_weights",
             "set",
-            "stake_recovery_note",
         }
+
         assert "inspect_stake_add_command" in helpers
-        assert len(helpers) == len(adjacent_fields) + 7
+        assert len(helpers) == len(adjacent_fields) + 8
         assert helpers["status"] == "agcli weights status --netuid 3"
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
         assert helpers["likely_cause"] == "The hotkey does not have enough stake to set weights."
         assert helpers["next_step"] == "Increase stake or use a hotkey that already meets the subnet stake requirement."
         assert helpers["error"] == "NotEnoughStakeToSetWeights"
@@ -3274,6 +4678,8 @@ class TestWeights:
         assert direct_fields == {
             "inspect_stake_command": "agcli stake list --netuid 3",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -3282,19 +4688,23 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 3 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 3",
             "stake_recovery_note": (
                 "Run inspect_stake_command to confirm the hotkey stake on this subnet, then compare it with "
                 "inspect_validator_requirements_command before retrying. Use inspect_config_show_command when the "
-                "wrong wallet or hotkey may be selected, inspect_wallet_show_command to inspect wallet inventory, "
-                "inspect_wallet_current_command to confirm the selected coldkey/hotkey identity, "
-                "inspect_wallet_associate_command when the hotkey may need to be re-associated to the coldkey, "
-                "inspect_wallet_derive_command for manual address confirmation from a pubkey or mnemonic, "
-                "inspect_wallet_sign_command when you need to generate a fresh confirmation signature, "
-                "inspect_wallet_verify_command when you need explicit signer/signature confirmation, and "
-                "inspect_balance_command when the coldkey may need more TAO before staking."
+                "wrong wallet or hotkey may be selected, inspect_config_set_wallet_command and "
+                "inspect_config_set_hotkey_command when the persisted defaults need correction, "
+                "inspect_wallet_show_command to inspect wallet inventory, inspect_wallet_current_command to confirm "
+                "the selected coldkey/hotkey identity, inspect_wallet_associate_command when the hotkey may need to "
+                "be re-associated to the coldkey, inspect_wallet_derive_command for manual address confirmation from "
+                "a pubkey or mnemonic, inspect_hotkey_address_command when you need explicit hotkey-address "
+                "confirmation against subnet endpoint data, inspect_wallet_sign_command when you need to generate a "
+                "fresh confirmation signature, inspect_wallet_verify_command when you need explicit "
+                "signer/signature confirmation, and inspect_balance_command when the coldkey may need more TAO "
+                "before staking."
             ),
         }
         assert adjacent_fields["inspect_stake_command"] == direct_fields["inspect_stake_command"]
@@ -3416,6 +4826,7 @@ class TestWeights:
                 "command preview."
             ),
             "status": "agcli weights status --netuid 3",
+            "local_validation_tip": weights._local_validation_tip(),
             "show_command": "agcli weights show --netuid 3",
             "inspect_metagraph_command": "agcli subnet metagraph --netuid 3",
             "inspect_chain_data_command": "agcli subnet show --netuid 3",
@@ -3427,6 +4838,8 @@ class TestWeights:
             "inspect_validators_command": "agcli view validators --netuid 3",
             "inspect_stake_command": "agcli stake list --netuid 3",
             "inspect_config_show_command": "agcli config show",
+            "inspect_config_set_wallet_command": "agcli config set --key wallet --value <wallet-name>",
+            "inspect_config_set_hotkey_command": "agcli config set --key hotkey --value <hotkey-name>",
             "inspect_wallet_show_command": "agcli wallet show --all",
             "inspect_wallet_current_command": "agcli wallet show",
             "inspect_wallet_associate_command": "agcli wallet associate-hotkey",
@@ -3435,6 +4848,7 @@ class TestWeights:
             "inspect_wallet_verify_command": (
                 "agcli wallet verify --message <message> --signature <signature> --signer <ss58>"
             ),
+            "inspect_hotkey_address_command": "agcli view axon --netuid <netuid> --hotkey-address <ss58>",
             "inspect_balance_command": "agcli balance",
             "inspect_stake_add_command": "agcli stake add --netuid 3 --amount <amount>",
             "inspect_validator_requirements_command": "agcli subnet hyperparams --netuid 3",
@@ -3442,6 +4856,8 @@ class TestWeights:
             "inspect_set_param_command": "agcli subnet set-param --netuid 3",
             "inspect_admin_list_command": "agcli admin list",
             "inspect_admin_raw_command": "agcli admin raw --call <sudo-call>",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
             "explain_weights_command": "agcli explain weights",
             "explain_commit_reveal_command": "agcli explain commit-reveal",
             "inspect_registration_cost_command": "agcli subnet cost --netuid 3",
@@ -3463,11 +4879,14 @@ class TestWeights:
                 "If the weights-specific path still looks wrong, pivot to show/metagraph and chain_data plus emissions "
                 "for live weights, subnet UIDs/state, pending_commits for operator watch/reveal drift checks, "
                 "inspect_neuron_command for per-UID member detail after metagraph/monitor checks, "
-                "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-                "wallet_sign plus wallet_verify plus balance plus "
+                "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+                "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus "
+                "hotkey_address plus balance plus "
                 "validators/stake/stake_add/validator_requirements for wallet "
-                "selector inspection, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey "
-                "association recovery, manual address derivation checks, signature generation, signature verification, "
+                "selector inspection, persisted selector correction, wallet inventory plus selected "
+                "coldkey/hotkey identity confirmation, hotkey "
+                "association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+                "signature generation, signature verification, "
                 "coldkey funding, "
                 "validator readiness, stake top-ups, or validator threshold checks, hyperparams plus "
                 "owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
@@ -3476,10 +4895,12 @@ class TestWeights:
                 "serve_axon plus serve_axon_tls plus serve_prometheus plus serve_reset plus probe plus "
                 "axon/miner_endpoints/validator_endpoints "
                 "for serve retries, TLS serve recovery, prometheus recovery, endpoint recovery, or "
-                "serve/endpoint verification, watch plus monitor for live UID/state drift, "
-                "explain_weights/explain_commit_reveal for copy-pasteable "
-                "concept refreshers, and subnets plus "
-                "subnet for available netuid discovery and the current subnet summary."
+                "serve/endpoint verification, watch plus monitor for live UID/state drift, localnet_scaffold plus "
+                "doctor for Docker/local runtime readiness before local weight validation, "
+                "explain_weights/explain_commit_reveal for copy-pasteable concept refreshers, and subnets plus "
+                "subnet for available netuid discovery and the current subnet summary. Use localnet_scaffold to "
+                "bootstrap a local chain and doctor to confirm the host is ready before trying commit-reveal "
+                "validation."
             ),
             "adjacent_recovery_note": (
                 "If the weights-specific retry path still looks wrong, pivot to show_command for live on-chain "
@@ -3487,14 +4908,16 @@ class TestWeights:
                 "inspect_metagraph_command, inspect_chain_data_command, inspect_emissions_command, and "
                 "inspect_monitor_command for live subnet UIDs/state drift, inspect_neuron_command for per-UID member "
                 "detail after metagraph/monitor checks, inspect_config_show_command, "
+                "inspect_config_set_wallet_command, inspect_config_set_hotkey_command, "
                 "inspect_wallet_show_command, inspect_wallet_current_command, inspect_wallet_associate_command, "
                 "inspect_wallet_derive_command, inspect_wallet_sign_command, inspect_wallet_verify_command, "
-                "inspect_balance_command, "
+                "inspect_hotkey_address_command, inspect_balance_command, "
                 "inspect_validators_command, inspect_stake_command, inspect_stake_add_command, "
-                "and inspect_validator_requirements_command for wallet selector inspection, wallet inventory plus "
-                "selected coldkey/hotkey identity confirmation, hotkey association recovery, manual address "
-                "derivation checks, signature generation, signature verification, coldkey funding, validator "
-                "readiness, "
+                "and inspect_validator_requirements_command for wallet selector inspection, persisted selector "
+                "correction, wallet inventory plus selected coldkey/hotkey identity confirmation, hotkey association "
+                "recovery, manual address "
+                "derivation checks, explicit hotkey-address confirmation, signature generation, signature "
+                "verification, coldkey funding, validator readiness, "
                 "stake top-ups, or validator threshold checks, "
                 "inspect_hyperparams_command plus "
                 "inspect_owner_param_list_command, inspect_set_param_command, inspect_admin_list_command, "
@@ -3508,9 +4931,12 @@ class TestWeights:
                 "inspect_miner_endpoints_command, and inspect_validator_endpoints_command for serve retries, "
                 "TLS serve recovery, prometheus recovery, endpoint recovery, or serve/endpoint verification, "
                 "inspect_watch_command plus inspect_monitor_command for live UID/state drift, "
-                "explain_weights_command plus "
-                "explain_commit_reveal_command for copy-pasteable concept refreshers, inspect_subnets_command for "
-                "available netuid discovery, and inspect_subnet_command for the current subnet summary."
+                "inspect_localnet_scaffold_command plus inspect_doctor_command for Docker/local runtime readiness "
+                "before local weight validation, explain_weights_command plus explain_commit_reveal_command for "
+                "copy-pasteable concept refreshers, inspect_subnets_command for available netuid discovery, and "
+                "inspect_subnet_command for the current subnet summary. Use inspect_localnet_scaffold_command to "
+                "bootstrap a local chain and inspect_doctor_command to confirm the host is ready before retrying "
+                "local commit-reveal validation."
             ),
         }
 
@@ -3519,6 +4945,7 @@ class TestWeights:
             "likely_cause",
             "next_step",
             "status",
+            "local_validation_tip",
             "show_command",
             "inspect_metagraph_command",
             "inspect_chain_data_command",
@@ -3530,12 +4957,15 @@ class TestWeights:
             "inspect_validators_command",
             "inspect_stake_command",
             "inspect_config_show_command",
+            "inspect_config_set_wallet_command",
+            "inspect_config_set_hotkey_command",
             "inspect_wallet_show_command",
             "inspect_wallet_current_command",
             "inspect_wallet_associate_command",
             "inspect_wallet_derive_command",
             "inspect_wallet_sign_command",
             "inspect_wallet_verify_command",
+            "inspect_hotkey_address_command",
             "inspect_balance_command",
             "inspect_stake_add_command",
             "inspect_validator_requirements_command",
@@ -3543,6 +4973,8 @@ class TestWeights:
             "inspect_set_param_command",
             "inspect_admin_list_command",
             "inspect_admin_raw_command",
+            "inspect_localnet_scaffold_command",
+            "inspect_doctor_command",
             "explain_weights_command",
             "explain_commit_reveal_command",
             "inspect_registration_cost_command",
@@ -3563,7 +4995,8 @@ class TestWeights:
             "adjacent_workflows_note",
             "adjacent_recovery_note",
         }
-        assert len(helpers) == 47
+        assert len(helpers) == 53
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
         assert helpers["inspect_chain_data_command"] == helpers["inspect_subnet_command"]
         assert helpers["inspect_subnets_command"] == "agcli subnet list"
         assert helpers["inspect_metagraph_command"] != helpers["inspect_chain_data_command"]
@@ -3650,7 +5083,7 @@ class TestWeights:
             assert missing_key not in helpers
 
         assert helpers["adjacent_workflows_note"].count("inspect_") == 1
-        assert helpers["adjacent_recovery_note"].count("inspect_") == 40
+        assert helpers["adjacent_recovery_note"].count("inspect_") == 47
         assert helpers["adjacent_recovery_note"].count("inspect_wallet_show_command") == 1
         assert helpers["adjacent_recovery_note"].count("inspect_wallet_current_command") == 1
         assert helpers["adjacent_workflows_note"].count("metagraph") == 2
@@ -3684,8 +5117,8 @@ class TestWeights:
         assert helpers["adjacent_recovery_note"].count("UIDs/state") == 1
         assert helpers["adjacent_workflows_note"].count("validator readiness") == 1
         assert helpers["adjacent_recovery_note"].count("validator readiness") == 1
-        assert helpers["adjacent_workflows_note"].count("readiness") == 2
-        assert helpers["adjacent_recovery_note"].count("readiness") == 2
+        assert helpers["adjacent_workflows_note"].count("readiness") == 3
+        assert helpers["adjacent_recovery_note"].count("readiness") == 3
         assert helpers["adjacent_workflows_note"].count("subnet entry") == 1
         assert helpers["adjacent_recovery_note"].count("subnet entry") == 1
         assert helpers["adjacent_workflows_note"].count("mutation discovery") == 1
@@ -3704,25 +5137,28 @@ class TestWeights:
             "inspect_monitor_command" in helpers["adjacent_recovery_note"]
         )
         assert (
-            "config_show plus wallet_show plus wallet_current plus wallet_associate plus wallet_derive plus "
-            "wallet_sign plus wallet_verify plus balance plus validators/stake/stake_add/"
-            "validator_requirements for wallet selector inspection, wallet inventory plus selected "
-            "coldkey/hotkey identity confirmation, hotkey association recovery, manual address "
-            "derivation checks, signature generation, signature verification, coldkey funding, "
-            "validator readiness" in helpers["adjacent_workflows_note"]
+            "config_show plus config_set_wallet plus config_set_hotkey plus wallet_show plus wallet_current plus "
+            "wallet_associate plus wallet_derive plus wallet_sign plus wallet_verify plus hotkey_address plus "
+            "balance plus validators/stake/stake_add/validator_requirements for wallet selector inspection, "
+            "persisted selector correction, wallet inventory plus selected coldkey/hotkey identity confirmation, "
+            "hotkey association recovery, manual address derivation checks, explicit hotkey-address confirmation, "
+            "signature generation, signature verification, coldkey funding, validator readiness"
+            in helpers["adjacent_workflows_note"]
         )
         assert (
             "inspect_wallet_show_command, inspect_wallet_current_command, inspect_wallet_associate_command, "
             "inspect_wallet_derive_command, inspect_wallet_sign_command, inspect_wallet_verify_command, "
-            "inspect_balance_command" in helpers["adjacent_recovery_note"]
+            "inspect_hotkey_address_command, inspect_balance_command" in helpers["adjacent_recovery_note"]
         )
         assert (
-            "inspect_config_show_command, inspect_wallet_show_command, inspect_wallet_current_command, "
-            "inspect_wallet_associate_command, inspect_wallet_derive_command, inspect_wallet_sign_command, "
-            "inspect_wallet_verify_command, inspect_balance_command, inspect_validators_command, "
+            "inspect_config_show_command, inspect_config_set_wallet_command, inspect_config_set_hotkey_command, "
+            "inspect_wallet_show_command, inspect_wallet_current_command, inspect_wallet_associate_command, "
+            "inspect_wallet_derive_command, inspect_wallet_sign_command, inspect_wallet_verify_command, "
+            "inspect_hotkey_address_command, inspect_balance_command, inspect_validators_command, "
             "inspect_stake_command, inspect_stake_add_command, and inspect_validator_requirements_command"
             in helpers["adjacent_recovery_note"]
         )
+
         assert (
             "hyperparams plus owner_param_list/set_param/admin_list/admin_raw/registration_cost/register_neuron/"
             "pow_register/snipe_register/health" in helpers["adjacent_workflows_note"]
@@ -3742,9 +5178,12 @@ class TestWeights:
 
     def test_troubleshoot_help_handles_custom_error_16(self, weights: Weights) -> None:
         helpers = weights.troubleshoot_help(1, "Custom error: 16", "0:100", salt="abc", version_key=2)
-        assert helpers["likely_cause"] == "The runtime returned a generic reveal-side custom error."
+        assert helpers["likely_cause"] == (
+            "The runtime returned a generic reveal-side custom error that often masks another commit-state condition."
+        )
         assert helpers["next_step"] == (
-            "Check pending commits, reveal timing, and that weights, salt, and version_key match the commit."
+            "Check weights status and pending commits first; if the commit is still WAITING or READY, wait or retry "
+            "the same reveal instead of recommitting."
         )
         assert helpers["normalized_weights"] == "0:100"
         assert helpers["commit"] == "agcli weights commit --netuid 1 --weights 0:100 --salt abc"
@@ -3874,6 +5313,7 @@ class TestWeights:
         assert helpers["recommended_action"] == "WAIT"
         assert helpers["recommended_command"] == "agcli weights status --netuid 8"
         assert helpers["reason"] == "A pending commit exists but the reveal window is not open yet."
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
 
     def test_status_text_next_action_help_recommends_commit_reveal_for_no_pending_text(self, weights: Weights) -> None:
         helpers = weights.status_text_next_action_help(
@@ -3922,6 +5362,7 @@ class TestWeights:
         assert helpers["recommended_command"] == (
             "agcli weights reveal-mechanism --netuid 5 --mechanism-id 4 --weights 0:100 --salt abc --version-key 7"
         )
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
 
     def test_status_text_next_timelocked_action_help_recommends_recommit(self, weights: Weights) -> None:
         helpers = weights.status_text_next_timelocked_action_help(
@@ -3951,6 +5392,8 @@ class TestWeights:
             helpers["reason"]
             == "A previous pending timelocked commit expired, so a fresh timelocked commit is required."
         )
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
+
 
     def test_status_text_troubleshoot_help_rejects_unrecognized_text(self, weights: Weights) -> None:
         with pytest.raises(ValueError, match=NON_MAPPING_OR_TEXT_STATUS_ERROR):
@@ -3980,7 +5423,21 @@ class TestWeights:
         mock_subprocess.return_value = make_completed_process(stdout=READY_STATUS_TEXT)
         summary = weights.status_summary_text(5)
         assert summary["status"] == "agcli weights status --netuid 5"
+        assert summary["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
         assert summary["next_action"] == "REVEAL"
+        assert summary["recommended_action"] == "REVEAL"
+        assert summary["recommended_command"] == "agcli weights status --netuid 5"
+        assert summary["reason"] == (
+            "A pending commit is ready to reveal now; provide the original weights and salt "
+            "to build the reveal command."
+        )
+        assert summary["next_step"] == (
+            "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
+        )
 
     def test_status_runbook_fetches_raw_text_and_summary(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
@@ -3988,6 +5445,16 @@ class TestWeights:
         assert runbook["status"] == "agcli weights status --netuid 7"
         assert runbook["raw_status"] == NO_PENDING_STATUS_TEXT.strip()
         assert runbook["summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert runbook["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+        assert runbook["recommended_action"] == "NO_PENDING_COMMITS"
+        assert runbook["recommended_command"] == "agcli weights status --netuid 7"
+        assert runbook["next_step"] == (
+            "Provide fresh weights, then rerun recommended_command to build the next commit command."
+        )
 
     def test_status_runbook_json_fetches_json_status_and_summary(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(
@@ -4011,6 +5478,15 @@ class TestWeights:
                 "next_action": "NO_PENDING_COMMITS",
                 "commit_windows": [],
             },
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
+            "recommended_action": "NO_PENDING_COMMITS",
+            "recommended_command": "agcli weights status --netuid 7",
+            "reason": "No commit is pending and this subnet uses commit-reveal.",
+            "next_step": "Provide fresh weights, then rerun recommended_command to build the next commit command.",
         }
 
     def test_status_runbook_json_rejects_non_mapping_status_output(
@@ -4088,6 +5564,7 @@ class TestWeights:
         assert helpers["raw_status"] == EXPIRED_STATUS_TEXT.strip()
         assert helpers["status_summary"]["next_action"] == "RECOMMIT"
         assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
 
     def test_diagnose_text_includes_status_command(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
@@ -4098,7 +5575,9 @@ class TestWeights:
         mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
         helpers = weights.diagnose_text(9, "ExpiredWeightCommit")
         assert helpers["likely_cause"] == "The previous commit expired before it was revealed."
-        assert helpers["next_step"] == "Commit again, then reveal inside the next valid reveal window."
+        assert helpers["next_step"] == (
+            "Prepare a fresh weights payload, then rerun recommended_command to build the retry command."
+        )
 
     def test_diagnose_text_without_payload_inputs_keeps_status_command(
         self, weights: Weights, mock_subprocess: Any
@@ -4114,9 +5593,11 @@ class TestWeights:
         assert helpers["status_summary"]["next_action"] == "WAIT"
         assert helpers["status_summary"]["commit_windows"][0]["blocks_until_action"] == 10
 
-    def test_diagnose_text_reuses_stripped_raw_status(self, weights: Weights, mock_subprocess: Any) -> None:
-        mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
+    def test_diagnose_text_reuses_shared_raw_status_normalizer(self, weights: Weights, mock_subprocess: Any) -> None:
+        status = "\n" + EXPIRED_STATUS_TEXT + "\n"
+        mock_subprocess.return_value = make_completed_process(stdout=status)
         helpers = weights.diagnose_text(9, "ExpiredWeightCommit")
+        assert helpers["raw_status"] == weights._status_raw_text(status)
         assert helpers["raw_status"].endswith("EXPIRED")
         assert not helpers["raw_status"].endswith("EXPIRED\n")
 
@@ -4131,6 +5612,13 @@ class TestWeights:
         helpers = weights.diagnose_text(4, "SettingWeightsTooFast")
         assert helpers["status_summary"]["commit_reveal_enabled"] is False
         assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+
+    def test_diagnose_text_keeps_compact_rate_limit_output(self, weights: Weights, mock_subprocess: Any) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=DIRECT_SET_STATUS_TEXT)
+        helpers = weights.diagnose_text(4, "SettingWeightsTooFast")
+        assert "inspect_status_command" not in helpers
+        assert "inspect_subnet_rules_command" not in helpers
+        assert "rate_limit_recovery_note" not in helpers
 
     def test_diagnose_text_rejects_unrecognized_status_text(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=BAD_STATUS_TEXT)
@@ -4151,6 +5639,17 @@ class TestWeights:
         helpers = weights.diagnose_mechanism_text(7, 4, "NoWeightsCommitFound", "0:100", hash_value="11" * 32)
         assert helpers["raw_status"] == NO_PENDING_STATUS_TEXT.strip()
         assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
+
+    def test_diagnose_mechanism_text_reuses_shared_raw_status_normalizer(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        status = "\n" + NO_PENDING_STATUS_TEXT + "\n"
+        mock_subprocess.return_value = make_completed_process(stdout=status)
+        helpers = weights.diagnose_mechanism_text(7, 4, "NoWeightsCommitFound", "0:100", hash_value="11" * 32)
+        assert helpers["raw_status"] == weights._status_raw_text(status)
+        assert helpers["raw_status"].endswith("No pending commits.")
+        assert not helpers["raw_status"].endswith("No pending commits.\n")
 
     def test_diagnose_mechanism_text_preserves_hash_guidance(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
@@ -4173,6 +5672,18 @@ class TestWeights:
         assert helpers["raw_status"] == EXPIRED_STATUS_TEXT.strip()
         assert helpers["status_summary"]["next_action"] == "RECOMMIT"
         assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
+
+    def test_diagnose_timelocked_text_reuses_shared_raw_status_normalizer(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        status = "\n" + WAITING_STATUS_TEXT + "\n"
+        mock_subprocess.return_value = make_completed_process(stdout=status)
+        helpers = weights.diagnose_timelocked_text(8, "RevealTooEarly")
+        assert helpers["raw_status"] == weights._status_raw_text(status)
+        assert helpers["raw_status"].endswith("WAITING (10 blocks until reveal window)")
+        assert not helpers["raw_status"].endswith("WAITING (10 blocks until reveal window)\n")
+        assert helpers["status_summary"]["next_action"] == "WAIT"
 
     def test_diagnose_timelocked_text_preserves_round(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
@@ -4205,18 +5716,147 @@ class TestWeights:
         helpers = weights.diagnose_text(5, "RevealTooEarly")
         assert helpers["recommended_action"] == "REVEAL"
         assert helpers["recommended_command"] == "agcli weights status --netuid 5"
+        assert helpers["next_step"] == (
+            "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
+        )
 
     def test_diagnose_mechanism_text_handles_ready_status_text(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=READY_STATUS_TEXT)
         helpers = weights.diagnose_mechanism_text(5, 4, "RevealTooEarly", "0:100", salt="abc", version_key=7)
         assert helpers["recommended_action"] == "REVEAL"
         assert "reveal-mechanism" in helpers["recommended_command"]
+        assert helpers["next_step"] == "Run recommended_command now to reveal the pending mechanism commit."
 
     def test_diagnose_timelocked_text_handles_ready_status_text(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=READY_STATUS_TEXT)
         helpers = weights.diagnose_timelocked_text(5, "RevealTooEarly", "0:100", salt="abc", version_key=7)
         assert helpers["recommended_action"] == "REVEAL"
         assert "reveal" in helpers["recommended_command"]
+        assert helpers["next_step"] == "Run recommended_command now to reveal the pending timelocked commit."
+
+    def test_troubleshoot_text_handles_ready_status_text_with_inputs(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=READY_STATUS_TEXT)
+        helpers = weights.troubleshoot_text(5, "RevealTooEarly", "0:100", salt="abc", version_key=7)
+        assert helpers["recommended_action"] == "REVEAL"
+        assert helpers["recommended_command"] == (
+            "agcli weights reveal --netuid 5 --weights 0:100 --salt abc --version-key 7"
+        )
+        assert helpers["next_step"] == "Run recommended_command now to reveal the pending commit."
+
+    def test_troubleshoot_text_handles_no_pending_direct_set_status_with_inputs(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=DIRECT_SET_STATUS_TEXT)
+        helpers = weights.troubleshoot_text(4, "SettingWeightsTooFast", "0:100", version_key=7)
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["recommended_command"] == "agcli weights set --netuid 4 --weights 0:100 --version-key 7"
+        assert helpers["next_step"] == "Run recommended_command to set weights directly."
+
+    def test_troubleshoot_text_adds_rate_limit_recovery_guidance(self, weights: Weights, mock_subprocess: Any) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=DIRECT_SET_STATUS_TEXT)
+        helpers = weights.troubleshoot_text(4, "SettingWeightsTooFast", "0:100", version_key=7)
+        assert helpers["inspect_status_command"] == "agcli weights status --netuid 4"
+        assert helpers["inspect_subnet_rules_command"] == "agcli subnet hyperparams --netuid 4"
+        assert helpers["rate_limit_recovery_note"] == (
+            "Run inspect_status_command to confirm whether a commit is already pending, then use "
+            "inspect_subnet_rules_command to inspect this subnet's weight update limits before retrying after "
+            "the rate-limit window passes."
+        )
+
+    def test_diagnose_mechanism_text_handles_no_pending_without_hash_with_next_step(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
+        helpers = weights.diagnose_mechanism_text(7, 4, "NoWeightsCommitFound")
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["next_step"] == (
+            "Compute a mechanism hash, then rerun recommended_command to build the next commit command."
+        )
+
+    def test_diagnose_timelocked_text_handles_no_pending_without_round_with_next_step(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
+        helpers = weights.diagnose_timelocked_text(7, "NoWeightsCommitFound")
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["next_step"] == (
+            "Prepare weights and a drand round, then rerun recommended_command to build the next commit command."
+        )
+
+    def test_troubleshoot_text_handles_no_pending_commit_reveal_status_with_inputs(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
+        helpers = weights.troubleshoot_text(3, "NoWeightsCommitFound", "0:100", salt="abc")
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["recommended_command"] == "agcli weights commit --netuid 3 --weights 0:100 --salt abc"
+        assert helpers["next_step"] == "Run recommended_command to start a fresh commit-reveal weights update."
+
+    def test_troubleshoot_timelocked_text_handles_expired_status_with_inputs(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
+        helpers = weights.diagnose_timelocked_text(9, "ExpiredWeightCommit", "0:100", round=42, salt="abc")
+        assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["recommended_command"] == (
+            "agcli weights commit-timelocked --netuid 9 --weights 0:100 --round 42 --salt abc"
+        )
+        assert helpers["next_step"] == "Run recommended_command to submit a fresh timelocked commit."
+
+    def test_diagnose_text_handles_expired_status_without_inputs(self, weights: Weights, mock_subprocess: Any) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
+        helpers = weights.diagnose_text(9, "ExpiredWeightCommit")
+        assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["recommended_command"] == "agcli weights status --netuid 9"
+        assert helpers["next_step"] == (
+            "Prepare a fresh weights payload, then rerun recommended_command to build the retry command."
+        )
+
+    def test_diagnose_mechanism_text_handles_expired_status_without_hash(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
+        helpers = weights.diagnose_mechanism_text(9, 4, "ExpiredWeightCommit")
+        assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["recommended_command"] == "agcli weights status --netuid 9"
+        assert helpers["next_step"] == (
+            "Compute a fresh mechanism hash, then rerun recommended_command to build the retry command."
+        )
+
+    def test_diagnose_timelocked_text_handles_expired_status_without_inputs(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
+        helpers = weights.diagnose_timelocked_text(9, "ExpiredWeightCommit")
+        assert helpers["recommended_action"] == "RECOMMIT"
+        assert helpers["recommended_command"] == "agcli weights status --netuid 9"
+        assert helpers["next_step"] == (
+            "Prepare fresh weights and a drand round, then rerun recommended_command to build the retry command."
+        )
+
+    def test_diagnose_mechanism_text_handles_no_pending_with_hash_and_next_step(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
+        helpers = weights.diagnose_mechanism_text(7, 4, "NoWeightsCommitFound", hash_value="11" * 32)
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["recommended_command"] == (
+            "agcli weights commit-mechanism --netuid 7 --mechanism-id 4 --hash " + "11" * 32
+        )
+        assert helpers["next_step"] == "Run recommended_command to start a fresh mechanism commit."
+
+    def test_diagnose_timelocked_text_handles_no_pending_with_round_and_next_step(
+        self, weights: Weights, mock_subprocess: Any
+    ) -> None:
+        mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
+        helpers = weights.diagnose_timelocked_text(7, "NoWeightsCommitFound", "0:100", round=42, salt="abc")
+        assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
+        assert helpers["recommended_command"] == (
+            "agcli weights commit-timelocked --netuid 7 --weights 0:100 --round 42 --salt abc"
+        )
+        assert helpers["next_step"] == "Run recommended_command to start a fresh timelocked commit."
 
     def test_diagnose_text_handles_no_pending_direct_set_status(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=DIRECT_SET_STATUS_TEXT)
@@ -4278,11 +5918,18 @@ class TestWeights:
         )
         assert runbook["status"] == "agcli weights status --netuid 3"
         assert runbook["summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert runbook["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
 
     def test_status_text_troubleshoot_help_preserves_likely_cause(self, weights: Weights) -> None:
         helpers = weights.status_text_troubleshoot_help(9, EXPIRED_STATUS_TEXT, "ExpiredWeightCommit")
         assert helpers["likely_cause"] == "The previous commit expired before it was revealed."
-        assert helpers["next_step"] == "Commit again, then reveal inside the next valid reveal window."
+        assert helpers["next_step"] == (
+            "Prepare a fresh weights payload, then rerun recommended_command to build the retry command."
+        )
 
     def test_status_text_next_action_help_includes_normalized_weights(self, weights: Weights) -> None:
         helpers = weights.status_text_next_action_help(7, NO_PENDING_STATUS_TEXT, {0: 100}, wait=True)
@@ -4338,17 +5985,36 @@ class TestWeights:
         helpers = weights.status_text_next_action_help(5, "\n" + READY_STATUS_TEXT + "\n", "0:100", salt="abc")
         assert helpers["raw_status"] == READY_STATUS_TEXT.strip()
 
+    def test_status_text_next_action_help_matches_shared_raw_status_normalizer(self, weights: Weights) -> None:
+        status = "\n" + READY_STATUS_TEXT + "\n"
+        helpers = weights.status_text_next_action_help(5, status, "0:100", salt="abc")
+        assert helpers["raw_status"] == weights._status_raw_text(status)
+
     def test_status_text_next_mechanism_action_help_strips_raw_status(self, weights: Weights) -> None:
         helpers = weights.status_text_next_mechanism_action_help(
             7, 4, "\n" + NO_PENDING_STATUS_TEXT + "\n", "0:100", hash_value="11" * 32
         )
         assert helpers["raw_status"] == NO_PENDING_STATUS_TEXT.strip()
 
+    def test_status_text_next_mechanism_action_help_matches_shared_raw_status_normalizer(
+        self, weights: Weights
+    ) -> None:
+        status = "\n" + NO_PENDING_STATUS_TEXT + "\n"
+        helpers = weights.status_text_next_mechanism_action_help(7, 4, status, "0:100", hash_value="11" * 32)
+        assert helpers["raw_status"] == weights._status_raw_text(status)
+
     def test_status_text_next_timelocked_action_help_strips_raw_status(self, weights: Weights) -> None:
         helpers = weights.status_text_next_timelocked_action_help(
             9, "\n" + EXPIRED_STATUS_TEXT + "\n", "0:100", round=42, salt="abc"
         )
         assert helpers["raw_status"] == EXPIRED_STATUS_TEXT.strip()
+
+    def test_status_text_next_timelocked_action_help_matches_shared_raw_status_normalizer(
+        self, weights: Weights
+    ) -> None:
+        status = "\n" + EXPIRED_STATUS_TEXT + "\n"
+        helpers = weights.status_text_next_timelocked_action_help(9, status, "0:100", round=42, salt="abc")
+        assert helpers["raw_status"] == weights._status_raw_text(status)
 
     def test_status_text_troubleshoot_help_strips_raw_status(self, weights: Weights) -> None:
         helpers = weights.status_text_troubleshoot_help(8, "\n" + WAITING_STATUS_TEXT + "\n", "RevealTooEarly")
@@ -4429,7 +6095,7 @@ class TestWeights:
             weights.status_text_next_action_help(1, 123)  # type: ignore[arg-type]
 
     def test_status_text_troubleshoot_help_rejects_non_string_status(self, weights: Weights) -> None:
-        with pytest.raises(ValueError, match=STATUS_MAPPING_ERROR):
+        with pytest.raises(ValueError, match=STATUS_TEXT_TYPE_ERROR):
             weights.status_text_troubleshoot_help(1, 123, "RevealTooEarly")  # type: ignore[arg-type]
 
     def test_status_text_next_mechanism_action_help_rejects_non_string_status(self, weights: Weights) -> None:
@@ -4456,7 +6122,9 @@ class TestWeights:
         mock_subprocess.return_value = make_completed_process(stdout=EXPIRED_STATUS_TEXT)
         helpers = weights.diagnose_text(9, "ExpiredWeightCommit")
         assert helpers["likely_cause"] == "The previous commit expired before it was revealed."
-        assert helpers["next_step"] == "Commit again, then reveal inside the next valid reveal window."
+        assert helpers["next_step"] == (
+            "Prepare a fresh weights payload, then rerun recommended_command to build the retry command."
+        )
 
     def test_diagnose_mechanism_text_reuses_error_guidance(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(stdout=NO_PENDING_STATUS_TEXT)
@@ -4577,6 +6245,25 @@ class TestWeights:
         }
         assert helpers["reveal_window"] == {"first_block": 110, "last_block": 120}
         assert helpers["timing_note"] == "Wait about 10 more blocks, then check status again."
+        assert "ready_command" not in helpers
+
+    def test_status_text_next_action_help_surfaces_ready_reveal_command_for_waiting_commit(
+        self, weights: Weights
+    ) -> None:
+        helpers = weights.status_text_next_action_help(
+            8,
+            WAITING_STATUS_TEXT,
+            "0:100",
+            salt="abc",
+            version_key=7,
+        )
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["recommended_command"] == "agcli weights status --netuid 8"
+        assert helpers["ready_command"] == "agcli weights reveal --netuid 8 --weights 0:100 --salt abc --version-key 7"
+        assert helpers["next_step"] == (
+            "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+        )
+        assert helpers["timing_note"] == "Wait about 10 more blocks, then check status again."
 
     def test_status_text_next_action_help_surfaces_reveal_window_context(self, weights: Weights) -> None:
         helpers = weights.status_text_next_action_help(5, READY_STATUS_TEXT, "0:100", salt="abc")
@@ -4616,10 +6303,57 @@ class TestWeights:
         assert helpers["reveal_window"] == {"first_block": 120, "last_block": 130}
         assert helpers["timing_note"] == "Reveal is ready now; current status reports 5 blocks remaining."
 
+    def test_status_text_next_mechanism_action_help_surfaces_ready_command_for_waiting_commit(
+        self, weights: Weights
+    ) -> None:
+        helpers = weights.status_text_next_mechanism_action_help(
+            8,
+            4,
+            WAITING_STATUS_TEXT,
+            "0:100",
+            salt="abc",
+            version_key=7,
+        )
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["recommended_command"] == "agcli weights status --netuid 8"
+        assert helpers["ready_command"] == (
+            "agcli weights reveal-mechanism --netuid 8 --mechanism-id 4 --weights 0:100 --salt abc --version-key 7"
+        )
+        assert helpers["next_step"] == (
+            "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+        )
+        assert helpers["timing_note"] == "Wait about 10 more blocks, then check status again."
+
+    def test_status_text_next_timelocked_action_help_surfaces_ready_command_for_waiting_commit(
+        self, weights: Weights
+    ) -> None:
+        helpers = weights.status_text_next_timelocked_action_help(
+            8,
+            WAITING_STATUS_TEXT,
+            "0:100",
+            round=42,
+            salt="abc",
+            version_key=7,
+        )
+        assert helpers["recommended_action"] == "WAIT"
+        assert helpers["recommended_command"] == "agcli weights status --netuid 8"
+        assert helpers["ready_command"] == "agcli weights reveal --netuid 8 --weights 0:100 --salt abc --version-key 7"
+        assert helpers["next_step"] == (
+            "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+        )
+        assert helpers["round"] == 42
+        assert helpers["timing_note"] == "Wait about 10 more blocks, then check status again."
+
     def test_status_text_troubleshoot_help_handles_no_inputs(self, weights: Weights) -> None:
         helpers = weights.status_text_troubleshoot_help(7, NO_PENDING_STATUS_TEXT, "NoWeightsCommitFound")
         assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
         assert helpers["recommended_command"] == "agcli weights status --netuid 7"
+        assert helpers["pending_commit_reconciliation_note"] == (
+            "The error came from reveal-side commit state, but the provided status snapshot currently shows no "
+            "pending commit on-chain. Refresh inspect_status_command and inspect_pending_commits_command once to "
+            "confirm that drift, then follow recommended_command instead of retrying a reveal for a commit that is "
+            "no longer visible."
+        )
 
     def test_status_text_next_mechanism_action_help_handles_no_inputs(self, weights: Weights) -> None:
         helpers = weights.status_text_next_mechanism_action_help(7, 4, NO_PENDING_STATUS_TEXT)
@@ -4894,6 +6628,13 @@ class TestWeights:
         summary = weights.status_summary(5)
         assert summary == {
             "status": "agcli weights status --netuid 5",
+            "inspect_localnet_scaffold_command": "agcli localnet scaffold",
+            "inspect_doctor_command": "agcli doctor",
+            "local_validation_tip": (
+                "When you need a local reproduction for commit-reveal or weights recovery, run "
+                "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+                "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+            ),
             "current_block": 125,
             "commit_reveal_enabled": True,
             "reveal_period_epochs": 3,
@@ -4911,6 +6652,27 @@ class TestWeights:
                     "hash": "0x1212",
                 }
             ],
+            "recommended_action": "REVEAL",
+            "recommended_command": "agcli weights status --netuid 5",
+            "reason": (
+                "A pending commit is ready to reveal now; provide the original weights and salt "
+                "to build the reveal command."
+            ),
+            "pending_commit": {
+                "index": 1,
+                "status": "READY TO REVEAL (5 blocks remaining)",
+                "commit_block": 100,
+                "first_reveal": 120,
+                "last_reveal": 130,
+                "blocks_until_action": 5,
+                "hash": "0x1212",
+            },
+            "reveal_window": {"first_block": 120, "last_block": 130},
+            "blocks_until_action": 5,
+            "timing_note": "Reveal is ready now; current status reports 5 blocks remaining.",
+            "next_step": (
+                "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
+            ),
         }
 
     def test_status_summary_falls_back_to_status_text_when_json_status_is_not_mapping(
@@ -4922,8 +6684,21 @@ class TestWeights:
         ]
         summary = weights.status_summary(5)
         assert summary["status"] == "agcli weights status --netuid 5"
+        assert summary["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
         assert summary["next_action"] == "REVEAL"
         assert summary["pending_commits"] == 1
+        assert summary["recommended_action"] == "REVEAL"
+        assert summary["reason"] == (
+            "A pending commit is ready to reveal now; provide the original weights and salt "
+            "to build the reveal command."
+        )
+        assert summary["next_step"] == (
+            "Recover the original weights and salt, then rerun recommended_command to build the reveal command."
+        )
 
     def test_next_action_help_recommends_reveal_for_ready_commit(self, weights: Weights) -> None:
         helpers = weights.next_action_help(
@@ -4966,10 +6741,12 @@ class TestWeights:
                     }
                 ],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "REVEAL",
             "recommended_command": "agcli weights reveal --netuid 1 --weights 0:100 --salt abc --version-key 7",
             "reason": "A pending commit is ready to reveal now.",
             "normalized_weights": "0:100",
+            "next_step": "Run recommended_command now to reveal the pending commit.",
             "pending_commit": {
                 "index": 1,
                 "status": "READY TO REVEAL (5 blocks remaining)",
@@ -5007,10 +6784,12 @@ class TestWeights:
                 "next_action": "NO_PENDING_COMMITS",
                 "commit_windows": [],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "NO_PENDING_COMMITS",
             "recommended_command": "agcli weights commit-reveal --netuid 3 --weights 0:100 --version-key 9 --wait",
             "reason": "No commit is pending and this subnet uses commit-reveal.",
             "normalized_weights": "0:100",
+            "next_step": "Run recommended_command to start a fresh commit-reveal weights update.",
         }
 
     def test_next_action_help_recommends_set_when_commit_reveal_is_disabled(self, weights: Weights) -> None:
@@ -5036,10 +6815,12 @@ class TestWeights:
                 "next_action": "NO_PENDING_COMMITS",
                 "commit_windows": [],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "NO_PENDING_COMMITS",
             "recommended_command": "agcli weights set --netuid 4 --weights 0:100 --version-key 2",
             "reason": "No commit is pending and direct weight setting is available.",
             "normalized_weights": "0:100",
+            "next_step": "Run recommended_command to set weights directly.",
         }
 
     def test_next_action_help_recommends_wait_when_pending_commit_is_not_ready(self, weights: Weights) -> None:
@@ -5082,10 +6863,12 @@ class TestWeights:
                     }
                 ],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "WAIT",
             "recommended_command": "agcli weights status --netuid 5",
             "reason": "A pending commit exists but the reveal window is not open yet.",
             "normalized_weights": "0:100",
+            "next_step": "Wait for the reveal window, then run ready_command. Until then, poll recommended_command.",
             "pending_commit": {
                 "index": 1,
                 "status": "WAITING (10 blocks until reveal window)",
@@ -5097,6 +6880,7 @@ class TestWeights:
             "blocks_until_action": 10,
             "reveal_window": {"first_block": 110, "last_block": 120},
             "timing_note": "Wait about 10 more blocks, then check status again.",
+            "ready_command": "agcli weights reveal --netuid 5 --weights 0:100 --salt abc",
         }
 
     def test_next_action_help_rejects_bad_status_shape(self, weights: Weights) -> None:
@@ -5139,10 +6923,12 @@ class TestWeights:
                     }
                 ],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "RECOMMIT",
             "recommended_command": "agcli weights commit --netuid 7 --weights 0:100 --salt abc",
             "reason": "A previous pending commit expired, so fresh weights are required.",
             "normalized_weights": "0:100",
+            "next_step": "Run recommended_command to submit a fresh weights update.",
             "pending_commit": {
                 "index": 1,
                 "status": "EXPIRED",
@@ -5177,6 +6963,24 @@ class TestWeights:
         assert runbook["summary"]["pending_commits"] == 0
         assert runbook["summary"]["next_action"] == "NO_PENDING_COMMITS"
         assert runbook["status"] == "agcli weights status --netuid 7"
+        assert runbook["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+        assert runbook["recommended_action"] == "NO_PENDING_COMMITS"
+        assert runbook["recommended_command"] == "agcli weights status --netuid 7"
+        assert runbook["next_step"] == (
+            "Provide fresh weights, then rerun recommended_command to build the next commit command."
+        )
+        assert runbook["reason"] == "No commit is pending and this subnet uses commit-reveal."
+        assert runbook["local_validation_tip"] == (
+            "When you need a local reproduction for commit-reveal or weights recovery, run "
+            "inspect_localnet_scaffold_command first to bootstrap a ready chain, then "
+            "inspect_doctor_command to confirm Docker and the local toolchain are available before retrying."
+        )
+        assert "raw_status" in runbook
+        assert "status_summary" not in runbook
 
     def test_status_runbook_json_preserves_mapping_raw_status(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(
@@ -5192,6 +6996,14 @@ class TestWeights:
         assert runbook["summary"]["pending_commits"] == 0
         assert runbook["summary"]["next_action"] == "NO_PENDING_COMMITS"
         assert runbook["status"] == "agcli weights status --netuid 7"
+        assert runbook["recommended_action"] == "NO_PENDING_COMMITS"
+        assert runbook["recommended_command"] == "agcli weights status --netuid 7"
+        assert runbook["next_step"] == (
+            "Provide fresh weights, then rerun recommended_command to build the next commit command."
+        )
+        assert runbook["reason"] == "No commit is pending and this subnet uses commit-reveal."
+        assert "status_summary" not in runbook
+        assert "raw_status" in runbook
 
     def test_troubleshoot_omits_raw_status_for_json_status(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(
@@ -5212,6 +7024,7 @@ class TestWeights:
         assert helpers["recommended_action"] == "NO_PENDING_COMMITS"
         assert helpers["reason"] == "No commit is pending and this subnet uses commit-reveal."
         assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
 
     def test_next_mechanism_action_omits_raw_status_for_json_status(
         self, weights: Weights, mock_subprocess: Any
@@ -5252,6 +7065,7 @@ class TestWeights:
             "mechanism hash to build the commit command."
         )
         assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
 
     def test_next_timelocked_action_omits_raw_status_for_json_status(
         self, weights: Weights, mock_subprocess: Any
@@ -5292,6 +7106,7 @@ class TestWeights:
             "drand round to build the next commit command."
         )
         assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
+        assert helpers["local_validation_tip"] == weights._local_validation_tip()
 
     def test_diagnose_fetches_live_status_summary(self, weights: Weights, mock_subprocess: Any) -> None:
         mock_subprocess.return_value = make_completed_process(
@@ -5305,8 +7120,9 @@ class TestWeights:
         assert helpers == {
             "error": "ExpiredWeightCommit",
             "likely_cause": "The previous commit expired before it was revealed.",
-            "next_step": "Commit again, then reveal inside the next valid reveal window.",
+            "next_step": "Prepare a fresh weights payload, then rerun recommended_command to build the retry command.",
             "status": "agcli weights status --netuid 7",
+            "local_validation_tip": weights._local_validation_tip(),
             "status_summary": {
                 "current_block": 140,
                 "commit_reveal_enabled": True,
@@ -5381,6 +7197,15 @@ class TestWeights:
         assert helpers["recommended_command"] == "agcli weights status --netuid 4"
         assert helpers["reason"] == "No commit is pending and direct weight setting is available."
 
+    def test_diagnose_keeps_compact_rate_limit_output(self, weights: Weights, mock_subprocess: Any) -> None:
+        mock_subprocess.return_value = make_completed_process(
+            stdout='{"block": 200, "commit_reveal_enabled": false, "reveal_period_epochs": 0, "commits": []}'
+        )
+        helpers = weights.diagnose(4, "SettingWeightsTooFast")
+        assert "inspect_status_command" not in helpers
+        assert "inspect_subnet_rules_command" not in helpers
+        assert "rate_limit_recovery_note" not in helpers
+
     def test_diagnose_includes_commit_reveal_guidance_when_enabled(
         self, weights: Weights, mock_subprocess: Any
     ) -> None:
@@ -5417,8 +7242,9 @@ class TestWeights:
         assert helpers == {
             "error": "RevealTooEarly",
             "likely_cause": "The reveal window has not opened yet for the pending commit.",
-            "next_step": "Check weights status and retry when the subnet enters the reveal period.",
+            "next_step": "Run recommended_command now to reveal the pending mechanism commit.",
             "status": "agcli weights status --netuid 1",
+            "local_validation_tip": weights._local_validation_tip(),
             "status_summary": {
                 "current_block": 125,
                 "commit_reveal_enabled": True,
@@ -5472,6 +7298,7 @@ class TestWeights:
         )
         assert helpers["reason"] == "No mechanism commit is pending and this subnet uses commit-reveal."
         assert helpers["normalized_weights"] == "0:100"
+        assert helpers["next_step"] == "Run recommended_command to start a fresh mechanism commit."
 
     def test_diagnose_mechanism_falls_back_to_status_text_when_json_status_is_not_mapping(
         self, weights: Weights, mock_subprocess: Any
@@ -5500,8 +7327,9 @@ class TestWeights:
         assert helpers == {
             "error": "ExpiredWeightCommit",
             "likely_cause": "The previous commit expired before it was revealed.",
-            "next_step": "Commit again, then reveal inside the next valid reveal window.",
+            "next_step": "Run recommended_command to submit a fresh timelocked commit.",
             "status": "agcli weights status --netuid 7",
+            "local_validation_tip": weights._local_validation_tip(),
             "status_summary": {
                 "current_block": 140,
                 "commit_reveal_enabled": True,
@@ -5565,11 +7393,13 @@ class TestWeights:
                 "next_action": "NO_PENDING_COMMITS",
                 "commit_windows": [],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "NO_PENDING_COMMITS",
             "recommended_command": ("agcli weights commit-mechanism --netuid 7 --mechanism-id 4 --hash " + "11" * 32),
             "reason": "No mechanism commit is pending and this subnet uses commit-reveal.",
             "normalized_weights": "0:100",
             "normalized_hash": "11" * 32,
+            "next_step": "Run recommended_command to start a fresh mechanism commit.",
         }
 
     def test_troubleshoot_mechanism_fetches_live_status(self, weights: Weights, mock_subprocess: Any) -> None:
@@ -5617,11 +7447,13 @@ class TestWeights:
                     }
                 ],
             },
+            "local_validation_tip": weights._local_validation_tip(),
             "recommended_action": "RECOMMIT",
             "recommended_command": "agcli weights commit-timelocked --netuid 7 --weights 0:100 --round 42 --salt abc",
             "reason": "A previous pending timelocked commit expired, so a fresh timelocked commit is required.",
             "normalized_weights": "0:100",
             "round": 42,
+            "next_step": "Run recommended_command to submit a fresh timelocked commit.",
             "pending_commit": {
                 "index": 1,
                 "status": "EXPIRED",
@@ -5644,6 +7476,10 @@ class TestWeights:
         helpers = weights.troubleshoot_timelocked(5, "RevealTooEarly", "0:100", round=42, salt="abc")
         assert helpers["recommended_action"] == "WAIT"
         assert helpers["recommended_command"] == "agcli weights status --netuid 5"
+        assert helpers["ready_command"] == "agcli weights reveal --netuid 5 --weights 0:100 --salt abc"
+        assert helpers["next_step"] == (
+            "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+        )
         assert helpers["reason"] == "A pending timelocked commit exists but the reveal window is not open yet."
         assert helpers["status_summary"]["next_action"] == "WAIT"
 
@@ -5747,6 +7583,19 @@ class TestWeights:
         assert helpers["reason"] == "No commit is pending and direct weight setting is available."
         assert helpers["status_summary"]["next_action"] == "NO_PENDING_COMMITS"
 
+    def test_troubleshoot_adds_rate_limit_recovery_guidance(self, weights: Weights, mock_subprocess: Any) -> None:
+        mock_subprocess.return_value = make_completed_process(
+            stdout='{"block": 200, "commit_reveal_enabled": false, "reveal_period_epochs": 0, "commits": []}'
+        )
+        helpers = weights.troubleshoot(4, "SettingWeightsTooFast", "0:100", version_key=2)
+        assert helpers["inspect_status_command"] == "agcli weights status --netuid 4"
+        assert helpers["inspect_subnet_rules_command"] == "agcli subnet hyperparams --netuid 4"
+        assert helpers["rate_limit_recovery_note"] == (
+            "Run inspect_status_command to confirm whether a commit is already pending, then use "
+            "inspect_subnet_rules_command to inspect this subnet's weight update limits before retrying after "
+            "the rate-limit window passes."
+        )
+
     def test_troubleshoot_fetches_live_status_commit_reveal_guidance(
         self, weights: Weights, mock_subprocess: Any
     ) -> None:
@@ -5771,6 +7620,10 @@ class TestWeights:
         helpers = weights.troubleshoot(5, "RevealTooEarly", "0:100", salt="abc")
         assert helpers["recommended_action"] == "WAIT"
         assert helpers["recommended_command"] == "agcli weights status --netuid 5"
+        assert helpers["ready_command"] == "agcli weights reveal --netuid 5 --weights 0:100 --salt abc"
+        assert helpers["next_step"] == (
+            "Wait for the reveal window, then run ready_command. Until then, poll recommended_command."
+        )
         assert helpers["reason"] == "A pending commit exists but the reveal window is not open yet."
         assert helpers["status_summary"]["next_action"] == "WAIT"
 
@@ -6112,6 +7965,7 @@ class TestWeights:
             "recommended_command": "agcli weights commit-reveal --netuid 7 --weights 0:100",
             "reason": "A previous pending commit expired, so fresh weights are required.",
             "normalized_weights": "0:100",
+            "next_step": "Run recommended_command to submit a fresh weights update.",
         }
         assert weights._next_action_guidance(
             7,
@@ -6123,6 +7977,7 @@ class TestWeights:
             "recommended_command": "agcli weights set --netuid 7 --weights 0:100 --version-key 3",
             "reason": "A previous pending commit expired, so fresh weights are required.",
             "normalized_weights": "0:100",
+            "next_step": "Run recommended_command to submit a fresh weights update.",
         }
 
     def test_next_action_guidance_rejects_invalid_summary_types(self, weights: Weights) -> None:
@@ -6323,6 +8178,18 @@ class TestWeights:
         fields = weights._troubleshoot_recovery_fields(3, "SubnetworkDoesNotExist")
         assert "subnet_missing_recovery_note" in fields
 
+    def test_troubleshoot_recovery_fields_rate_limit(self, weights: Weights) -> None:
+        fields = weights._troubleshoot_recovery_fields(3, "NetworkTxRateLimitExceeded")
+        assert fields == {
+            "inspect_status_command": "agcli weights status --netuid 3",
+            "inspect_subnet_rules_command": "agcli subnet hyperparams --netuid 3",
+            "rate_limit_recovery_note": (
+                "Run inspect_status_command to confirm whether a commit is already pending, then use "
+                "inspect_subnet_rules_command to inspect this subnet's weight update limits before retrying after "
+                "the rate-limit window passes."
+            ),
+        }
+
     def test_saved_state_recovery_fields_no_match(self, weights: Weights) -> None:
         fields = weights._saved_state_recovery_fields(3, "some unknown error")
         assert fields == {}
@@ -6370,6 +8237,65 @@ class TestWeights:
             },
         )
         assert "already_pending_recovery_note" in fields
+
+    def test_status_aware_recovery_fields_waiting_commit_state_error(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields(
+            "RevealTooEarly",
+            {
+                "next_action": "WAIT",
+                "commit_reveal_enabled": True,
+                "commit_windows": [
+                    {
+                        "status": "WAITING (10 blocks until reveal window)",
+                        "commit_block": 90,
+                        "first_reveal": 110,
+                        "last_reveal": 120,
+                    }
+                ],
+            },
+        )
+        assert fields["pending_commit_reconciliation_note"] == (
+            "Status already shows a pending commit that is still waiting for its reveal window. Keep the current "
+            "commit, poll recommended_command, and only retry reveal after the window opens instead of recommitting."
+        )
+
+    def test_status_aware_recovery_fields_ready_commit_state_error(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields(
+            "Custom error: 16",
+            {
+                "next_action": "REVEAL",
+                "commit_reveal_enabled": True,
+                "commit_windows": [
+                    {
+                        "status": "READY TO REVEAL (3 blocks remaining)",
+                        "commit_block": 90,
+                        "first_reveal": 100,
+                        "last_reveal": 120,
+                    }
+                ],
+            },
+        )
+        assert fields["pending_commit_reconciliation_note"] == (
+            "Status already shows a pending commit ready to reveal. Use recommended_command for the reveal path "
+            "before creating or submitting anything new, and inspect inspect_pending_commits_command if the reveal "
+            "inputs may have drifted."
+        )
+
+    def test_status_aware_recovery_fields_no_pending_commit_state_error(self, weights: Weights) -> None:
+        fields = weights._status_aware_recovery_fields(
+            "NoWeightsCommitFound",
+            {
+                "next_action": "NO_PENDING_COMMITS",
+                "commit_reveal_enabled": True,
+                "commit_windows": [],
+            },
+        )
+        assert fields["pending_commit_reconciliation_note"] == (
+            "The error came from reveal-side commit state, but the provided status snapshot currently shows no "
+            "pending commit on-chain. Refresh inspect_status_command and inspect_pending_commits_command once to "
+            "confirm that drift, then follow recommended_command instead of retrying a reveal for a commit that is "
+            "no longer visible."
+        )
 
     def test_saved_state_status_fields_skips_non_mapping_commit_window_entries(
         self, weights: Weights, tmp_path: Path

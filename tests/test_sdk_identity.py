@@ -27,12 +27,12 @@ class TestIdentity:
     def test_get(self, identity, mock_subprocess):
         identity.get()
         cmd = mock_subprocess.call_args[0][0]
-        assert "identity" in cmd and "get" in cmd
+        assert "identity" in cmd and "show" in cmd
 
     def test_get_with_address(self, identity, mock_subprocess):
         identity.get(address="5G...")
         cmd = mock_subprocess.call_args[0][0]
-        assert "--address" in cmd
+        assert "show" in cmd and "--address" in cmd
 
     def test_set_subnet(self, identity, mock_subprocess):
         identity.set_subnet(netuid=1, name="My Subnet")

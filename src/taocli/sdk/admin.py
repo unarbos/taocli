@@ -14,6 +14,7 @@ class Admin(SdkModule):
         "Use admin list to discover the exact set-* command for root-only knobs, then "
         "run it with --sudo-key. Subnet-owner knobs can usually use subnet set-param instead."
     )
+    _RECOMMENDED_ORDER = ["show", "get", "owner_param_list", "admin_list", "set"]
 
     @staticmethod
     def _netuid_arg(netuid: int) -> str:
@@ -40,6 +41,71 @@ class Admin(SdkModule):
             return None
         return Admin._text_arg(name, value)
 
+    @staticmethod
+    def _has_payload(payload: object | None) -> bool:
+        """Return whether a workflow payload is meaningfully present."""
+        if payload is None:
+            return False
+        if isinstance(payload, str):
+            return bool(payload.strip())
+        if isinstance(payload, (list, tuple, set, dict)):
+            return bool(payload)
+        return True
+
+    @staticmethod
+    def _validation_status(validated_reads: list[str], has_mutation_plan: bool) -> str:
+        """Return a compact workflow status for admin hyperparameter helpers."""
+        if len(validated_reads) == 4:
+            return "ready_to_mutate" if has_mutation_plan else "ready"
+        if validated_reads:
+            return "partial"
+        return "missing"
+
+    @classmethod
+    def _validation_summary(
+        cls,
+        netuid_arg: str,
+        validated_reads: list[str],
+        missing_reads: list[str],
+        has_mutation_plan: bool,
+    ) -> str:
+        """Return a compact text summary for admin hyperparameter helpers."""
+        if not validated_reads:
+            return (
+                f"Admin hyperparameter reads for subnet {netuid_arg} still need show, get, "
+                "owner_param_list, and admin_list output."
+            )
+        if missing_reads:
+            return (
+                f"Admin hyperparameter reads for subnet {netuid_arg} have {', '.join(validated_reads)}; "
+                f"still missing {', '.join(missing_reads)}."
+            )
+        if has_mutation_plan:
+            return (
+                f"Admin hyperparameter reads for subnet {netuid_arg} are ready and the mutation command is prepared."
+            )
+        return (
+            f"Admin hyperparameter reads for subnet {netuid_arg} are ready: show, get, "
+            "owner_param_list, and admin_list output are present."
+        )
+
+    @classmethod
+    def _next_validation_step(
+        cls,
+        workflow: dict[str, Any],
+        missing_reads: list[str],
+    ) -> str:
+        """Return the next command operators should run for admin hyperparameter validation."""
+        if "show" in missing_reads:
+            return str(workflow["show"])
+        if "get" in missing_reads:
+            return str(workflow["get"])
+        if "owner_param_list" in missing_reads:
+            return str(workflow["owner_param_list"])
+        if "admin_list" in missing_reads:
+            return str(workflow["admin_list"])
+        return str(workflow.get("set") or workflow["raw"])
+
     @classmethod
     def hyperparameter_workflow_help(
         cls,
@@ -65,12 +131,20 @@ class Admin(SdkModule):
 
         commands: dict[str, Any] = {
             "netuid": int(netuid_arg),
+            "scope": "subnet_admin",
+            "summary": (
+                f"Inspect subnet {netuid_arg} hyperparameters, compare subnet-owner vs root-only knobs, "
+                "then prepare the exact admin set-* command you need."
+            ),
+            "recommended_order": list(cls._RECOMMENDED_ORDER),
             "show": f"agcli subnet show --netuid {netuid_arg}",
             "get": f"agcli subnet hyperparams --netuid {netuid_arg}",
             "owner_param_list": f"agcli subnet set-param --netuid {netuid_arg} --param list",
             "admin_list": "agcli admin list",
             "raw": "agcli admin raw --call <sudo-call>",
             "sudo_note": cls._SUDO_NOTE,
+            "primary_read": f"agcli subnet hyperparams --netuid {netuid_arg}",
+            "mutation_check": "agcli admin list",
         }
 
         if command_arg is None:
@@ -92,6 +166,254 @@ class Admin(SdkModule):
             commands["sudo_key"] = sudo_key_arg
         commands["set"] = mutation
         return commands
+
+    @classmethod
+    def hyperparameter_validation_help(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a compact validation summary for supplied admin hyperparameter reads."""
+        workflow = cls.hyperparameter_workflow_help(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+        )
+        read_payloads = (
+            ("show", show),
+            ("get", get),
+            ("owner_param_list", owner_param_list),
+            ("admin_list", admin_list),
+        )
+        validated_reads = [name for name, payload in read_payloads if cls._has_payload(payload)]
+        missing_reads = [
+            name for name in ("show", "get", "owner_param_list", "admin_list") if name not in validated_reads
+        ]
+        has_mutation_plan = "set" in workflow
+        return {
+            "netuid": workflow["netuid"],
+            "scope": workflow["scope"],
+            "validated_reads": validated_reads,
+            "missing_reads": missing_reads,
+            "has_mutation_plan": has_mutation_plan,
+            "validation_status": cls._validation_status(validated_reads, has_mutation_plan),
+            "validation_summary": cls._validation_summary(
+                str(workflow["netuid"]), validated_reads, missing_reads, has_mutation_plan
+            ),
+            "next_validation_step": cls._next_validation_step(workflow, missing_reads),
+            "workflow": workflow,
+        }
+
+    @classmethod
+    def hyperparameter_validation_text(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> str:
+        """Return a concise text summary for supplied admin hyperparameter reads."""
+        summary = cls.hyperparameter_validation_help(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+            show=show,
+            get=get,
+            owner_param_list=owner_param_list,
+            admin_list=admin_list,
+        )
+        return str(summary["validation_summary"])
+
+    @classmethod
+    def hyperparameter_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Return a practical operator snapshot combining admin workflow and validation fields."""
+        validation = cls.hyperparameter_validation_help(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+            show=show,
+            get=get,
+            owner_param_list=owner_param_list,
+            admin_list=admin_list,
+        )
+        workflow = dict(validation["workflow"])
+        snapshot = dict(workflow)
+        snapshot["workflow"] = workflow
+        snapshot["validation_status"] = validation["validation_status"]
+        snapshot["validation_summary"] = validation["validation_summary"]
+        snapshot["validated_reads"] = validation["validated_reads"]
+        snapshot["missing_reads"] = validation["missing_reads"]
+        snapshot["has_mutation_plan"] = validation["has_mutation_plan"]
+        snapshot["next_validation_step"] = validation["next_validation_step"]
+        return snapshot
+
+    @classmethod
+    def hyperparameter_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> str:
+        """Return a concise operator snapshot text for supplied admin hyperparameter reads."""
+        snapshot = cls.hyperparameter_snapshot_help(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+            show=show,
+            get=get,
+            owner_param_list=owner_param_list,
+            admin_list=admin_list,
+        )
+        return f"{snapshot['validation_summary']} Next: {snapshot['next_validation_step']}"
+
+    @classmethod
+    def hyperparameters_validation_help(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for hyperparameter_validation_help."""
+        return cls.hyperparameter_validation_help(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+            show=show,
+            get=get,
+            owner_param_list=owner_param_list,
+            admin_list=admin_list,
+        )
+
+    @classmethod
+    def hyperparameters_validation_text(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> str:
+        """Backward-compatible alias for hyperparameter_validation_text."""
+        return cls.hyperparameter_validation_text(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+            show=show,
+            get=get,
+            owner_param_list=owner_param_list,
+            admin_list=admin_list,
+        )
+
+    @classmethod
+    def hyperparameters_snapshot_help(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> dict[str, Any]:
+        """Backward-compatible alias for hyperparameter_snapshot_help."""
+        return cls.hyperparameter_snapshot_help(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+            show=show,
+            get=get,
+            owner_param_list=owner_param_list,
+            admin_list=admin_list,
+        )
+
+    @classmethod
+    def hyperparameters_snapshot_text(
+        cls,
+        netuid: int,
+        *,
+        command: str | None = None,
+        value_flag: str | None = None,
+        value: str | int | float | bool | None = None,
+        sudo_key: str | None = None,
+        show: object | None = None,
+        get: object | None = None,
+        owner_param_list: object | None = None,
+        admin_list: object | None = None,
+    ) -> str:
+        """Backward-compatible alias for hyperparameter_snapshot_text."""
+        return cls.hyperparameter_snapshot_text(
+            netuid,
+            command=command,
+            value_flag=value_flag,
+            value=value,
+            sudo_key=sudo_key,
+            show=show,
+            get=get,
+            owner_param_list=owner_param_list,
+            admin_list=admin_list,
+        )
 
     @classmethod
     def hyperparameter_mutation_help(
